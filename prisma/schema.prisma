@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id            String    @id @default(cuid())
+  nome          String
+  email         String    @unique
+  senha         String
+  telefone      String?
+  cpf           String?   @unique
+  tipo          String    // "cliente" ou "produtor"
+  criadoEm      DateTime  @default(now())
+  atualizadoEm  DateTime  @updatedAt
+  eventos       Evento[]  // Eventos criados (para produtores)
+  compras       Compra[]
+  mensagens     Mensagem[]
+}
+
+model Evento {
+  id                String    @id @default(cuid())
+  titulo            String
+  descricao         String
+  data              DateTime
+  horaInicio        String
+  horaFim           String
+  local             String
+  endereco          String
+  cidade            String
+  estado            String
+  cep               String
+  categoria         String
+  imagem            String?
+  organizadorId     String
+  organizador       Usuario   @relation(fields: [organizadorId], references: [id])
+  criadoEm          DateTime  @default(now())
+  atualizadoEm      DateTime  @updatedAt
+  tiposIngresso     TipoIngresso[]
+  informacoesAdicionais String?
+}
+
+model TipoIngresso {
+  id              String    @id @default(cuid())
+  nome            String
+  preco           Float
+  quantidade      Int
+  eventoId        String
+  evento          Evento    @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  itensCompra     ItemCompra[]
+}
+
+model Compra {
+  id              String    @id @default(cuid())
+  usuarioId       String
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id])
+  status          String    // "pendente", "confirmado", "cancelado"
+  total           Float
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+  itens           ItemCompra[]
+}
+
+model ItemCompra {
+  id              String    @id @default(cuid())
+  compraId        String
+  compra          Compra    @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  tipoIngressoId  String
+  tipoIngresso    TipoIngresso @relation(fields: [tipoIngressoId], references: [id])
+  quantidade      Int
+  precoUnitario   Float
+  codigo          String    @unique
+}
+
+model Mensagem {
+  id              String    @id @default(cuid())
+  nome            String
+  email           String
+  assunto         String
+  mensagem        String
+  usuarioId       String?
+  usuario         Usuario?  @relation(fields: [usuarioId], references: [id])
+  criadoEm        DateTime  @default(now())
+  respondida      Boolean   @default(false)
+}
