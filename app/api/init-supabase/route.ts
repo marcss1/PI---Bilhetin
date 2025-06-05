@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase"
-// O import do 'bcrypt' e a criação do 'senhaHash' não são mais necessários aqui
-// se você não for usá-los para MAIS NADA além do que já é feito pelo supabase.auth.admin.createUser.
-// No entanto, se você usasse bcrypt para gerar a senha passada para createUser, tudo bem,
-// mas o ponto principal é não tentar inserir na tabela 'usuarios'.
-// Para este exemplo, vamos remover o 'hash' e 'senhaHash' já que o createUser aceita a senha em texto plano.
+
 
 async function initializeDatabase() {
   console.log("Verificando se o banco de dados precisa ser inicializado...")
   const supabase = createServerSupabaseClient()
 
-  // Verificar se já existem usuários
+  // verificação se já existem usuários
   const { count, error: countError } = await supabase.from("usuarios").select("*", { count: "exact", head: true })
 
   if (countError) {
@@ -24,7 +20,7 @@ async function initializeDatabase() {
 
   console.log("Inicializando banco de dados com dados iniciais...")
 
-  // Criar usuário cliente no Auth
+  // comando para criar usuário cliente no Auth
   const { data: clienteAuth, error: clienteAuthError } = await supabase.auth.admin.createUser({
     email: "cliente@exemplo.com",
     password: "senha123", // Supabase Auth faz o hash e armazena de forma segura
@@ -32,7 +28,7 @@ async function initializeDatabase() {
   })
 
   if (clienteAuthError) {
-    console.error("Erro ao criar clienteAuth:", clienteAuthError) // Log mais detalhado
+    console.error("Erro ao criar clienteAuth:", clienteAuthError) 
     throw clienteAuthError
   }
   if (!clienteAuth || !clienteAuth.user) { // Verificação adicional
@@ -40,7 +36,7 @@ async function initializeDatabase() {
   }
 
 
-  // Criar usuário produtor no Auth
+  // crioação de usuário produtor no Auth
   const { data: produtorAuth, error: produtorAuthError } = await supabase.auth.admin.createUser({
     email: "produtor@exemplo.com",
     password: "senha123", // Supabase Auth faz o hash e armazena de forma segura
@@ -48,20 +44,20 @@ async function initializeDatabase() {
   })
 
   if (produtorAuthError) {
-    console.error("Erro ao criar produtorAuth:", produtorAuthError) // Log mais detalhado
+    console.error("Erro ao criar produtorAuth:", produtorAuthError) 
     throw produtorAuthError
   }
   if (!produtorAuth || !produtorAuth.user) { // Verificação adicional
       throw new Error("Falha ao criar usuário produtor no Auth ou usuário não retornado.");
   }
 
-  // Inserir dados adicionais dos usuários
+  // comando de inserir dados adicionais dos usuários
   const { error: usuariosError } = await supabase.from("usuarios").insert([
     {
       id: clienteAuth.user.id,
       nome: "João Silva",
       email: "cliente@exemplo.com",
-      // senha: senhaHash, // REMOVA ESTA LINHA
+     
       tipo: "cliente",
       telefone: "(11) 98765-4321",
       cpf: "123.456.789-00",
@@ -70,7 +66,7 @@ async function initializeDatabase() {
       id: produtorAuth.user.id,
       nome: "Maria Oliveira",
       email: "produtor@exemplo.com",
-      // senha: senhaHash, // REMOVA ESTA LINHA
+    
       tipo: "produtor",
       telefone: "(11) 91234-5678",
       cpf: "987.654.321-00",
@@ -78,17 +74,15 @@ async function initializeDatabase() {
   ])
 
   if (usuariosError) {
-    console.error("Erro ao inserir em usuarios:", usuariosError) // Log mais detalhado
+    console.error("Erro ao inserir em usuarios:", usuariosError) 
     throw usuariosError
   }
 
   console.log("Usuários (perfis) criados")
 
-  // ... (resto do seu código para criar eventos e tipos de ingresso permanece o mesmo) ...
-  // Certifique-se que 'produtorAuth.user.id' está disponível para 'organizador_id' nos eventos.
-  // As verificações adicionais acima para clienteAuth e produtorAuth ajudam nisso.
 
-  // Criar eventos
+
+  // comando de criação de eventos
   const { data: evento1, error: evento1Error } = await supabase
     .from("eventos")
     .insert([
@@ -96,7 +90,7 @@ async function initializeDatabase() {
         titulo: "Festival de Música Brasileira",
         descricao:
           "O maior festival de música brasileira com os melhores artistas nacionais. Uma experiência única para os amantes da música brasileira, com shows de MPB, samba, rock nacional e muito mais.",
-        data: new Date("2025-08-15").toISOString(), // Ajustei a data para o futuro
+        data: new Date("2025-08-15").toISOString(), 
         hora_inicio: "16:00",
         hora_fim: "23:00",
         local: "Parque Ibirapuera",
@@ -112,9 +106,9 @@ async function initializeDatabase() {
       },
     ])
     .select()
-    .single() // Adicionado .single() se você espera apenas um objeto de volta e para simplificar o acesso ao id
+    .single() 
 
-  if (evento1Error || !evento1) { // Simplificado
+  if (evento1Error || !evento1) { 
     console.error("Erro ao criar evento 1:", evento1Error);
     throw evento1Error || new Error("Erro ao criar evento 1 ou evento não retornado");
   }
@@ -126,7 +120,7 @@ async function initializeDatabase() {
         titulo: "Stand-Up Comedy Night",
         descricao:
           "Uma noite de muitas risadas com os melhores comediantes do Brasil. Venha se divertir com stand-up comedy de primeira qualidade.",
-        data: new Date("2025-08-22").toISOString(), // Ajustei a data
+        data: new Date("2025-08-22").toISOString(),
         hora_inicio: "20:00",
         hora_fim: "22:30",
         local: "Teatro Municipal",
@@ -157,7 +151,7 @@ async function initializeDatabase() {
         titulo: "Exposição de Arte Contemporânea",
         descricao:
           "Uma exposição com obras de artistas contemporâneos brasileiros e internacionais. Uma oportunidade única para apreciar a arte moderna e contemporânea.",
-        data: new Date("2025-09-10").toISOString(), // Ajustei a data
+        data: new Date("2025-09-10").toISOString(), 
         hora_inicio: "09:00",
         hora_fim: "19:00",
         local: "MASP",
@@ -187,7 +181,7 @@ async function initializeDatabase() {
         titulo: "Campeonato Brasileiro de Futebol",
         descricao:
           "Partida decisiva do Campeonato Brasileiro de Futebol. Venha torcer pelo seu time e vivenciar a emoção do futebol brasileiro.",
-        data: new Date("2025-09-05").toISOString(), // Ajustei a data
+        data: new Date("2025-09-05").toISOString(), 
         hora_inicio: "16:00",
         hora_fim: "18:00",
         local: "Estádio do Morumbi",
@@ -213,7 +207,7 @@ async function initializeDatabase() {
 
   console.log("Eventos criados")
 
-  // Criar tipos de ingresso
+  // Criar os tipos de ingresso
   // Certifique-se que evento1.id, evento2.id etc. estão corretos após usar .single()
   const { error: tiposError } = await supabase.from("tipos_ingresso").insert([
     { nome: "Inteira", preco: 120, quantidade: 1000, evento_id: evento1.id },
@@ -229,7 +223,7 @@ async function initializeDatabase() {
   ])
 
   if (tiposError) {
-    console.error("Erro ao criar tipos de ingresso:", tiposError) // Log mais detalhado
+    console.error("Erro ao criar tipos de ingresso:", tiposError) 
     throw tiposError
   }
 
