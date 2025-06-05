@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import { prisma } from "./prisma"
-import { hash, compare } from "bcrypt"
+import { createServerSupabaseClient } from "./supabase"
+import { hash } from "bcrypt"
 import { z } from "zod"
 import { cookies } from "next/headers"
 import { sign, verify } from "jsonwebtoken"
@@ -72,32 +72,56 @@ export async function cadastrarUsuario(formData: FormData) {
     // Validação com Zod
     usuarioSchema.parse({ nome, email, senha, tipo })
 
+    const supabase = createServerSupabaseClient()
+
     // Verificar se o email já existe
-    const usuarioExistente = await prisma.usuario.findUnique({
-      where: { email },
-    })
+    const { data: usuarioExistente, error: checkError } = await supabase
+      .from("usuarios")
+      .select("id")
+      .eq("email", email)
+      .single()
 
     if (usuarioExistente) {
       return { success: false, message: "Este email já está em uso" }
     }
 
-    // Criptografar a senha
-    const senhaHash = await hash(senha, 10)
-
-    // Criar o usuário
-    const usuario = await prisma.usuario.create({
-      data: {
-        nome,
-        email,
-        senha: senhaHash,
-        tipo,
-        telefone,
-        cpf,
-      },
+    // Registrar o usuário no Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password: senha,
     })
 
+    if (authError || !authData.user) {
+      return { success: false, message: authError?.message || "Erro ao criar usuário" }
+    }
+
+    // Criptografar a senha para armazenamento adicional (opcional, já que o Supabase Auth já faz isso)
+    const senhaHash = await hash(senha, 10)
+
+    // Inserir dados adicionais do usuário na tabela usuarios
+    const { data: userData, error: userError } = await supabase
+      .from("usuarios")
+      .insert([
+        {
+          id: authData.user.id,
+          nome,
+          email,
+          senha: senhaHash, // Armazenamos uma cópia da senha hash para uso interno
+          tipo,
+          telefone,
+          cpf,
+        },
+      ])
+      .select()
+
+    if (userError) {
+      // Tentar limpar o usuário criado no Auth se houver erro
+      await supabase.auth.admin.deleteUser(authData.user.id)
+      return { success: false, message: userError.message }
+    }
+
     // Criar token JWT
-    const token = sign({ id: usuario.id, email: usuario.email, tipo: usuario.tipo }, JWT_SECRET, {
+    const token = sign({ id: authData.user.id, email: authData.user.email, tipo }, JWT_SECRET, {
       expiresIn: "7d",
     })
 
@@ -128,24 +152,31 @@ export async function login(formData: FormData) {
     // Validação com Zod
     loginSchema.parse({ email, senha })
 
-    // Buscar usuário
-    const usuario = await prisma.usuario.findUnique({
-      where: { email },
+    const supabase = createServerSupabaseClient()
+
+    // Autenticar com Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
     })
 
-    if (!usuario) {
+    if (authError || !authData.user) {
       return { success: false, message: "Email ou senha incorretos" }
     }
 
-    // Verificar senha
-    const senhaCorreta = await compare(senha, usuario.senha)
+    // Buscar dados adicionais do usuário
+    const { data: userData, error: userError } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("id", authData.user.id)
+      .single()
 
-    if (!senhaCorreta) {
-      return { success: false, message: "Email ou senha incorretos" }
+    if (userError) {
+      return { success: false, message: "Erro ao buscar dados do usuário" }
     }
 
     // Criar token JWT
-    const token = sign({ id: usuario.id, email: usuario.email, tipo: usuario.tipo }, JWT_SECRET, {
+    const token = sign({ id: authData.user.id, email: authData.user.email, tipo: userData.tipo }, JWT_SECRET, {
       expiresIn: "7d",
     })
 
@@ -181,18 +212,15 @@ export async function getUsuarioLogado() {
 
   try {
     const decoded = verify(token, JWT_SECRET) as { id: string; email: string; tipo: string }
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        tipo: true,
-        telefone: true,
-        cpf: true,
-      },
-    })
+    const supabase = createServerSupabaseClient()
 
+    const { data: usuario, error } = await supabase
+      .from("usuarios")
+      .select("id, nome, email, tipo, telefone, cpf")
+      .eq("id", decoded.id)
+      .single()
+
+    if (error) throw error
     return usuario
   } catch (error) {
     console.error("Erro ao verificar token:", error)
@@ -256,31 +284,53 @@ export async function cadastrarEvento(formData: FormData) {
 
     eventoSchema.parse(eventoData)
 
+    const supabase = createServerSupabaseClient()
+
     // Criar evento
-    const evento = await prisma.evento.create({
-      data: {
-        titulo,
-        descricao,
-        data: new Date(data),
-        horaInicio,
-        horaFim,
-        local,
-        endereco,
-        cidade,
-        estado,
-        cep,
-        categoria,
-        imagem,
-        informacoesAdicionais,
-        organizadorId: usuario.id,
-        tiposIngresso: {
-          create: tiposIngressoData,
+    const { data: eventoResult, error: eventoError } = await supabase
+      .from("eventos")
+      .insert([
+        {
+          titulo,
+          descricao,
+          data: new Date(data).toISOString(),
+          hora_inicio: horaInicio,
+          hora_fim: horaFim,
+          local,
+          endereco,
+          cidade,
+          estado,
+          cep,
+          categoria,
+          imagem,
+          informacoes_adicionais: informacoesAdicionais,
+          organizador_id: usuario.id,
         },
-      },
-    })
+      ])
+      .select()
+
+    if (eventoError || !eventoResult || eventoResult.length === 0) {
+      throw eventoError || new Error("Erro ao criar evento")
+    }
+
+    const eventoId = eventoResult[0].id
+
+    // Criar tipos de ingresso
+    const tiposIngressoFormatados = tiposIngressoData.map((tipo) => ({
+      nome: tipo.nome,
+      preco: tipo.preco,
+      quantidade: tipo.quantidade,
+      evento_id: eventoId,
+    }))
+
+    const { error: tiposError } = await supabase.from("tipos_ingresso").insert(tiposIngressoFormatados)
+
+    if (tiposError) {
+      throw tiposError
+    }
 
     revalidatePath("/eventos")
-    redirect(`/eventos/${evento.id}`)
+    redirect(`/eventos/${eventoId}`)
   } catch (error) {
     console.error("Erro ao cadastrar evento:", error)
     if (error instanceof z.ZodError) {
@@ -309,22 +359,43 @@ export async function adicionarAoCarrinho(formData: FormData) {
       return { success: false, message: "Selecione pelo menos um ingresso" }
     }
 
-    // Buscar ou criar carrinho (compra pendente)
-    let compra = await prisma.compra.findFirst({
-      where: {
-        usuarioId: usuario.id,
-        status: "pendente",
-      },
-    })
+    const supabase = createServerSupabaseClient()
 
-    if (!compra) {
-      compra = await prisma.compra.create({
-        data: {
-          usuarioId: usuario.id,
-          status: "pendente",
-          total: 0,
-        },
-      })
+    // Buscar ou criar carrinho (compra pendente)
+    const { data: compraExistente, error: compraError } = await supabase
+      .from("compras")
+      .select("id")
+      .eq("usuario_id", usuario.id)
+      .eq("status", "pendente")
+      .single()
+
+    let compraId: string
+
+    if (compraError && compraError.code !== "PGRST116") {
+      // PGRST116 é o código para "não encontrado"
+      throw compraError
+    }
+
+    if (compraExistente) {
+      compraId = compraExistente.id
+    } else {
+      // Criar nova compra
+      const { data: novaCompra, error: novaCompraError } = await supabase
+        .from("compras")
+        .insert([
+          {
+            usuario_id: usuario.id,
+            status: "pendente",
+            total: 0,
+          },
+        ])
+        .select()
+
+      if (novaCompraError || !novaCompra || novaCompra.length === 0) {
+        throw novaCompraError || new Error("Erro ao criar compra")
+      }
+
+      compraId = novaCompra[0].id
     }
 
     // Adicionar itens ao carrinho
@@ -332,11 +403,16 @@ export async function adicionarAoCarrinho(formData: FormData) {
 
     for (const tipo of tiposIngresso) {
       if (tipo.quantidade > 0) {
-        const tipoIngresso = await prisma.tipoIngresso.findUnique({
-          where: { id: tipo.id },
-        })
+        // Buscar tipo de ingresso
+        const { data: tipoIngresso, error: tipoError } = await supabase
+          .from("tipos_ingresso")
+          .select("*")
+          .eq("id", tipo.id)
+          .single()
 
-        if (!tipoIngresso) continue
+        if (tipoError || !tipoIngresso) {
+          continue
+        }
 
         // Verificar disponibilidade
         if (tipo.quantidade > tipoIngresso.quantidade) {
@@ -352,25 +428,30 @@ export async function adicionarAoCarrinho(formData: FormData) {
           .substring(2, 7)}`
 
         // Adicionar ao carrinho
-        await prisma.itemCompra.create({
-          data: {
-            compraId: compra.id,
-            tipoIngressoId: tipo.id,
+        const { error: itemError } = await supabase.from("itens_compra").insert([
+          {
+            compra_id: compraId,
+            tipo_ingresso_id: tipo.id,
             quantidade: tipo.quantidade,
-            precoUnitario: tipoIngresso.preco,
+            preco_unitario: tipoIngresso.preco,
             codigo,
           },
-        })
+        ])
+
+        if (itemError) {
+          throw itemError
+        }
 
         total += tipo.quantidade * tipoIngresso.preco
       }
     }
 
     // Atualizar total da compra
-    await prisma.compra.update({
-      where: { id: compra.id },
-      data: { total },
-    })
+    const { error: updateError } = await supabase.from("compras").update({ total }).eq("id", compraId)
+
+    if (updateError) {
+      throw updateError
+    }
 
     revalidatePath("/carrinho")
     redirect("/carrinho")
@@ -388,37 +469,49 @@ export async function removerDoCarrinho(itemId: string) {
   }
 
   try {
-    // Verificar se o item pertence ao usuário
-    const item = await prisma.itemCompra.findUnique({
-      where: { id: itemId },
-      include: {
-        compra: true,
-      },
-    })
+    const supabase = createServerSupabaseClient()
 
-    if (!item || item.compra.usuarioId !== usuario.id) {
+    // Verificar se o item pertence ao usuário
+    const { data: item, error: itemError } = await supabase
+      .from("itens_compra")
+      .select(`
+        *,
+        compra:compras(*)
+      `)
+      .eq("id", itemId)
+      .single()
+
+    if (itemError || !item || item.compra.usuario_id !== usuario.id) {
       return { success: false, message: "Item não encontrado" }
     }
 
     // Remover item
-    await prisma.itemCompra.delete({
-      where: { id: itemId },
-    })
+    const { error: deleteError } = await supabase.from("itens_compra").delete().eq("id", itemId)
+
+    if (deleteError) {
+      throw deleteError
+    }
 
     // Recalcular total da compra
-    const itensRestantes = await prisma.itemCompra.findMany({
-      where: { compraId: item.compraId },
-      include: {
-        tipoIngresso: true,
-      },
-    })
+    const { data: itensRestantes, error: itensError } = await supabase
+      .from("itens_compra")
+      .select(`
+        *,
+        tipoIngresso:tipos_ingresso(*)
+      `)
+      .eq("compra_id", item.compra_id)
 
-    const novoTotal = itensRestantes.reduce((total, item) => total + item.quantidade * item.precoUnitario, 0)
+    if (itensError) {
+      throw itensError
+    }
 
-    await prisma.compra.update({
-      where: { id: item.compraId },
-      data: { total: novoTotal },
-    })
+    const novoTotal = itensRestantes.reduce((total, item) => total + item.quantidade * item.tipoIngresso.preco, 0)
+
+    const { error: updateError } = await supabase.from("compras").update({ total: novoTotal }).eq("id", item.compra_id)
+
+    if (updateError) {
+      throw updateError
+    }
 
     revalidatePath("/carrinho")
     return { success: true }
@@ -436,44 +529,60 @@ export async function finalizarCompra() {
   }
 
   try {
-    // Buscar carrinho
-    const compra = await prisma.compra.findFirst({
-      where: {
-        usuarioId: usuario.id,
-        status: "pendente",
-      },
-      include: {
-        itens: {
-          include: {
-            tipoIngresso: true,
-          },
-        },
-      },
-    })
+    const supabase = createServerSupabaseClient()
 
-    if (!compra || compra.itens.length === 0) {
+    // Buscar carrinho
+    const { data: compra, error: compraError } = await supabase
+      .from("compras")
+      .select("*")
+      .eq("usuario_id", usuario.id)
+      .eq("status", "pendente")
+      .single()
+
+    if (compraError || !compra) {
+      return { success: false, message: "Carrinho vazio" }
+    }
+
+    // Buscar itens da compra
+    const { data: itens, error: itensError } = await supabase
+      .from("itens_compra")
+      .select(`
+        *,
+        tipoIngresso:tipos_ingresso(*)
+      `)
+      .eq("compra_id", compra.id)
+
+    if (itensError) {
+      throw itensError
+    }
+
+    if (!itens || itens.length === 0) {
       return { success: false, message: "Carrinho vazio" }
     }
 
     // Atualizar estoque de ingressos
-    for (const item of compra.itens) {
-      await prisma.tipoIngresso.update({
-        where: { id: item.tipoIngressoId },
-        data: {
-          quantidade: {
-            decrement: item.quantidade,
-          },
-        },
-      })
+    for (const item of itens) {
+      const { error: updateError } = await supabase
+        .from("tipos_ingresso")
+        .update({
+          quantidade: item.tipoIngresso.quantidade - item.quantidade,
+        })
+        .eq("id", item.tipo_ingresso_id)
+
+      if (updateError) {
+        throw updateError
+      }
     }
 
     // Confirmar compra
-    await prisma.compra.update({
-      where: { id: compra.id },
-      data: {
-        status: "confirmado",
-      },
-    })
+    const { error: updateCompraError } = await supabase
+      .from("compras")
+      .update({ status: "confirmado" })
+      .eq("id", compra.id)
+
+    if (updateCompraError) {
+      throw updateCompraError
+    }
 
     revalidatePath("/perfil")
     redirect("/perfil?tab=ingressos")
@@ -490,17 +599,20 @@ export async function enviarMensagem(data: { nome: string; email: string; assunt
     mensagemSchema.parse(data)
 
     const usuario = await getUsuarioLogado()
+    const supabase = createServerSupabaseClient()
 
     // Criar mensagem
-    await prisma.mensagem.create({
-      data: {
+    const { error } = await supabase.from("mensagens").insert([
+      {
         nome: data.nome,
         email: data.email,
         assunto: data.assunto,
         mensagem: data.mensagem,
-        usuarioId: usuario?.id,
+        usuario_id: usuario?.id,
       },
-    })
+    ])
+
+    if (error) throw error
 
     return { success: true }
   } catch (error) {

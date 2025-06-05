@@ -9,6 +9,7 @@ import { CalendarDays, MapPin, Clock, Users, Info, Share2 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { formatarPreco } from "@/lib/utils"
 import { AlertMessage } from "@/components/alert-message"
+import { AvaliacoesEvento } from "@/components/avaliacoes-evento"
 
 interface TipoIngresso {
   id: string
@@ -203,6 +204,10 @@ export default function EventoPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+      {/* Seção de Avaliações */}
+      <div className="mb-8">
+        <AvaliacoesEvento eventoId={evento.id} />
       </div>
     </div>
   )
