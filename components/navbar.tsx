@@ -15,9 +15,10 @@ export function Navbar() {
     <header className="bg-secondary text-secondary-foreground">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-primary">
+          {/*<Link href="/" className="text-2xl font-bold text-primary"> // Caso a gente queira só o nome, sem a logo em imagem
             Bilhetin
-          </Link>
+          </Link>*/}
+          <Link href="/"><img src="/logo_nome.png" alt="Logo da marca" className="h-8 w-auto" /></Link>
 
           {/* Menu para desktop */}
           <nav className="hidden md:flex items-center space-x-6">

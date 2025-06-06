@@ -26,12 +26,12 @@ const config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#FFD700", // Amarelo
+          DEFAULT: "#FFAE00", // nosso amarelo padrão da marca
           foreground: "#000000", // Texto preto sobre amarelo
         },
         secondary: {
           DEFAULT: "#000000", // Preto
-          foreground: "#FFD700", // Texto amarelo sobre preto
+          foreground: "#FFAE00", // Texto amarelo sobre preto
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -42,7 +42,7 @@ const config = {
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "#FFD700", // Amarelo como accent
+          DEFAULT: "#FFAE00", // Amarelo como accent
           foreground: "#000000", // Texto preto sobre amarelo
         },
         popover: {
