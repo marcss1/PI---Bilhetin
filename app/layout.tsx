@@ -11,7 +11,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Bilhetin - Venda de Ingressos",
   description: "Compre ingressos para os melhores eventos do Brasil",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({

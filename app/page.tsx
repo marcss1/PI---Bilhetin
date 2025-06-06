@@ -79,11 +79,12 @@ export default function Home() {
             </div>
             <div className="hidden md:block">
               <Image
-                src="/placeholder.svg?height=500&width=600"
+                src="/imagem_evento_inicio_teste.jpg?height=500&width=600"
                 alt="Eventos"
                 width={600}
                 height={500}
-                className="rounded-lg"
+                className="rounded-lg border-2 border-white shadow-lg ml-20"
+    
               />
             </div>
           </div>
