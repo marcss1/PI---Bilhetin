@@ -63,9 +63,9 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-primary mb-4">Contato</h4>
             <p className="text-sm mb-4">
-              contato@bilhetin.com.br
+              bilhetineventos@gmail.com
               <br />
-              (11) 9999-9999
+              (61) 98319-5565
             </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-primary hover:text-primary/80">

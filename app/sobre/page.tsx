@@ -14,7 +14,7 @@ export default function SobrePage() {
                 Sobre o <span className="text-primary">Bilhetin</span>
               </h1>
               <p className="text-lg mb-6">
-                Conectando pessoas a experiências incríveis desde 2023. Somos a plataforma líder em venda de ingressos
+                Conectando pessoas a experiências incríveis desde 2025. Somos a plataforma mais promissora em venda de ingressos
                 para eventos no Brasil.
               </p>
             </div>
@@ -39,16 +39,16 @@ export default function SobrePage() {
             <div className="space-y-6 text-lg">
               <p>
                 O Bilhetin nasceu da paixão por eventos e da necessidade de simplificar o processo de compra e venda de
-                ingressos no Brasil. Fundado em 2023 por um grupo de entusiastas de tecnologia e amantes de eventos
-                culturais, o Bilhetin rapidamente se tornou referência no mercado.
+                ingressos no Brasil. Fundado em 2025 por um grupo de universitários de tecnologia e amantes de eventos
+                culturais, o Bilhetin promete se tornar referência no mercado.
               </p>
               <p>
-                Nossa jornada começou com a missão de democratizar o acesso a eventos, tornando o processo mais
+                Nossa jornada começou com a missão de facilitar o acesso a eventos, tornando o processo mais
                 transparente, seguro e acessível tanto para produtores quanto para o público. Desde então, temos
-                trabalhado incansavelmente para aprimorar nossa plataforma e oferecer a melhor experiência possível.
+                trabalhado incansavelmente para aprimorar nossa plataforma e oferecer a melhor experiência possível para você.
               </p>
               <p>
-                Hoje, o Bilhetin conecta milhares de pessoas a eventos de todos os tipos em todo o Brasil, desde
+                Hoje, o Bilhetin visa concetar milhares de pessoas a eventos de todos os tipos em todo o Brasil, desde
                 pequenos shows locais até grandes festivais nacionais. Estamos orgulhosos do caminho percorrido e
                 animados com as possibilidades que o futuro reserva.
               </p>
@@ -103,23 +103,23 @@ export default function SobrePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {[
               {
-                nome: "Ana Silva",
-                cargo: "CEO & Fundadora",
+                nome: "Eduardo Oliveira",
+                cargo: "Idealizador do projeto, designer",
                 foto: "/placeholder.svg?height=300&width=300",
               },
               {
-                nome: "Carlos Oliveira",
-                cargo: "CTO",
+                nome: "Giovanna Martins",
+                cargo: "Desenvolvedora do projeto",
                 foto: "/placeholder.svg?height=300&width=300",
               },
               {
-                nome: "Mariana Santos",
-                cargo: "Diretora de Marketing",
+                nome: "João Augusto Bassul",
+                cargo: "Documentarista",
                 foto: "/placeholder.svg?height=300&width=300",
               },
               {
-                nome: "Rafael Costa",
-                cargo: "Diretor de Operações",
+                nome: "Marcones Queiroz",
+                cargo: "Desenvolvedor do projeto",
                 foto: "/placeholder.svg?height=300&width=300",
               },
             ].map((membro, index) => (

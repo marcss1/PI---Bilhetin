@@ -170,9 +170,9 @@ export default function ContatoPage() {
                       <div>
                         <h3 className="font-bold mb-1">E-mail</h3>
                         <p className="text-gray-600 mb-1">Para dúvidas gerais:</p>
-                        <p className="font-medium">contato@bilhetin.com.br</p>
+                        <p className="font-medium">bilhetineventos@gmail.com</p>
                         <p className="text-gray-600 mb-1 mt-3">Para suporte técnico:</p>
-                        <p className="font-medium">suporte@bilhetin.com.br</p>
+                        <p className="font-medium">bilhetineventos@gmail.com</p>
                       </div>
                     </div>
                   </CardContent>
@@ -186,10 +186,10 @@ export default function ContatoPage() {
                       </div>
                       <div>
                         <h3 className="font-bold mb-1">Telefone</h3>
-                        <p className="text-gray-600 mb-1">Central de Atendimento:</p>
-                        <p className="font-medium">(11) 3456-7890</p>
+                        {/*<p className="text-gray-600 mb-1">Central de Atendimento:</p>
+                        <p className="font-medium">(61) 98319-5565</p>*/}
                         <p className="text-gray-600 mb-1 mt-3">WhatsApp:</p>
-                        <p className="font-medium">(11) 98765-4321</p>
+                        <p className="font-medium">(61) 98319-5565</p>
                       </div>
                     </div>
                   </CardContent>
@@ -205,11 +205,11 @@ export default function ContatoPage() {
                         <h3 className="font-bold mb-1">Endereço</h3>
                         <p className="text-gray-600 mb-1">Escritório Principal:</p>
                         <p className="font-medium">
-                          Av. Paulista, 1000, 10º andar
-                          <br />
+                          Atualmente atuamos apenas de forma remota
+                          {/*<br />
                           Bela Vista, São Paulo - SP
                           <br />
-                          CEP: 01310-100
+                          CEP: 01310-100*/}
                         </p>
                       </div>
                     </div>
@@ -217,7 +217,7 @@ export default function ContatoPage() {
                 </Card>
               </div>
 
-              <div className="mt-8">
+              {/*<div className="mt-8">
                 <h3 className="font-bold mb-4">Horário de Atendimento</h3>
                 <p className="mb-2">
                   <span className="font-medium">Segunda a Sexta:</span> 9h às 18h
@@ -225,7 +225,7 @@ export default function ContatoPage() {
                 <p>
                   <span className="font-medium">Sábado:</span> 9h às 13h
                 </p>
-              </div>
+              </div>*/}
             </div>
           </div>
         </div>

@@ -5,11 +5,11 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, User, Menu, X, LogOut, Plus } from "lucide-react"
 import { useAuth } from "./auth-provider"
-import { logout } from "@/lib/actions"
+
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { usuario } = useAuth()
+  const { usuario, logout } = useAuth()
 
   return (
     <header className="bg-secondary text-secondary-foreground">
@@ -72,17 +72,15 @@ export function Navbar() {
                     <span className="sr-only">Perfil</span>
                   </Button>
                 </Link>
-                <form action={logout}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
-                    type="submit"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span className="sr-only">Sair</span>
-                  </Button>
-                </form>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
+                  onClick={logout}
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="sr-only">Sair</span>
+                </Button>
               </div>
             ) : (
               <>
@@ -168,11 +166,15 @@ export function Navbar() {
               </div>
               <div className="flex flex-col space-y-2 pt-2">
                 {usuario ? (
-                  <form action={logout}>
-                    <Button variant="outline" className="w-full border-primary text-primary" type="submit">
-                      Sair
-                    </Button>
-                  </form>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
+                    onClick={logout}
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span className="sr-only">Sair</span>
+                  </Button>
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsMenuOpen(false)}>
