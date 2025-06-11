@@ -97,7 +97,7 @@ export default function SobrePage() {
       </section>
 
       {/* Equipe */}
-      <section className="py-16">
+      <section className="py-16 bg-secondary text-secondary-foreground">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-12 text-center">Nossa Equipe</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -128,27 +128,7 @@ export default function SobrePage() {
                   <Image src={membro.foto || "/placeholder.svg"} alt={membro.nome} fill className="object-cover" />
                 </div>
                 <h3 className="text-xl font-bold">{membro.nome}</h3>
-                <p className="text-gray-600">{membro.cargo}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Números */}
-      <section className="py-16 bg-secondary text-secondary-foreground">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">Bilhetin em Números</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { numero: "500+", texto: "Eventos Realizados" },
-              { numero: "100k+", texto: "Ingressos Vendidos" },
-              { numero: "50+", texto: "Cidades Atendidas" },
-              { numero: "98%", texto: "Clientes Satisfeitos" },
-            ].map((item, index) => (
-              <div key={index} className="text-center">
-                <p className="text-4xl md:text-5xl font-bold text-primary mb-2">{item.numero}</p>
-                <p className="text-lg">{item.texto}</p>
+                <p className="text-white">{membro.cargo}</p>
               </div>
             ))}
           </div>
@@ -163,19 +143,7 @@ export default function SobrePage() {
             <p className="text-lg mb-8">
               Seja como cliente ou produtor de eventos, junte-se a nós e faça parte dessa jornada incrível.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/cadastro">
-                <Button className="bg-primary text-secondary hover:bg-primary/90 w-full sm:w-auto">Criar Conta</Button>
-              </Link>
-              <Link href="/contato">
-                <Button
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary hover:text-secondary w-full sm:w-auto"
-                >
-                  Fale Conosco
-                </Button>
-              </Link>
-            </div>
+            
           </div>
         </div>
       </section>

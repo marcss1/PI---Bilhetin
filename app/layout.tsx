@@ -1,17 +1,13 @@
-// app/layout.tsx
+// src/app/layout.tsx
 
-// SUAS IMPORTAÇÕES EXISTENTES
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { AuthProvider } from "@/components/auth-provider";
-
-// ADICIONE ESTAS DUAS NOVAS IMPORTAÇÕES
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,14 +21,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { session } } = await supabase.auth.getSession();
-
-  // Este console.log agora não terá mais erro
-  console.log(
-    "--- [SERVIDOR - layout.tsx] Renderizando layout. Sessão no servidor:",
-    session ? session.user.id : null
-  );
+  const cookieStore = cookies();
+  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  
+  const { 
+    data: { session },
+  } = await supabase.auth.getSession();
 
   return (
     <html lang="pt-BR">

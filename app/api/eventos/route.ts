@@ -2,6 +2,33 @@ import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { formatarData } from "@/lib/utils"
 
+// --- ADICIONADO: Interfaces para tipagem dos dados ---
+// Define a estrutura de um único tipo de ingresso.
+interface TipoIngresso {
+  nome: string;
+  preco: number;
+  quantidade: number;
+}
+
+// Define a estrutura do objeto de evento que vem do Supabase.
+interface EventoSupabase {
+  id: string;
+  titulo: string;
+  descricao: string;
+  data: string; // Vem como string ISO do Supabase
+  hora_inicio: string;
+  hora_fim: string;
+  local: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  categoria: string;
+  imagem: string;
+  organizador: { nome: string } | null;
+  tiposIngresso: TipoIngresso[];
+}
+
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -65,18 +92,20 @@ export async function GET(request: Request) {
         query = query.order("data", { ascending: true })
     }
 
-    // Executar query
-    const { data: eventos, error } = await query
+    // --- ALTERADO: Aplica a tipagem ao executar a query ---
+    const { data: eventos, error } = await query.returns<EventoSupabase[]>()
 
     if (error) {
       throw error
     }
 
-    // Formatar e filtrar por preço (feito no JavaScript pois é complexo no Supabase)
+    // --- CORRIGIDO: O erro em 'tipo' foi resolvido ---
+    // TypeScript agora sabe que 'evento' é do tipo 'EventoSupabase',
+    // então ele infere que 'tipo' é do tipo 'TipoIngresso'.
     let eventosFormatados = eventos.map((evento) => {
       const precos = evento.tiposIngresso.map((tipo) => tipo.preco)
-      const precoMinimo = Math.min(...precos)
-      const precoMaximo = Math.max(...precos)
+      const precoMinimo = precos.length > 0 ? Math.min(...precos) : 0
+      const precoMaximo = precos.length > 0 ? Math.max(...precos) : 0
 
       return {
         id: evento.id,
@@ -142,9 +171,10 @@ export async function POST(request: Request) {
       categoria,
       imagem,
       informacoesAdicionais,
+      // --- ALTERADO: Tipagem explícita para os tipos de ingresso ---
       tiposIngresso,
       organizadorId,
-    } = body
+    }: { tiposIngresso: TipoIngresso[] } & Record<string, any> = body // Adiciona tipagem
 
     // Inserir evento no Supabase
     const { data: eventoData, error: eventoError } = await supabase
@@ -168,15 +198,17 @@ export async function POST(request: Request) {
         },
       ])
       .select()
+      .single() // Usar .single() se você espera apenas um resultado
 
-    if (eventoError || !eventoData || eventoData.length === 0) {
+    if (eventoError || !eventoData) {
       throw eventoError || new Error("Erro ao criar evento")
     }
 
-    const eventoId = eventoData[0].id
+    const eventoId = eventoData.id
 
     // Inserir tipos de ingresso
-    const tiposIngressoFormatados = tiposIngresso.map((tipo: any) => ({
+    // --- CORRIGIDO: Não é mais necessário usar 'any' ---
+    const tiposIngressoFormatados = tiposIngresso.map((tipo) => ({
       nome: tipo.nome,
       preco: tipo.preco,
       quantidade: tipo.quantidade,
@@ -186,10 +218,12 @@ export async function POST(request: Request) {
     const { error: tiposError } = await supabase.from("tipos_ingresso").insert(tiposIngressoFormatados)
 
     if (tiposError) {
+      // Opcional: deletar o evento criado se a inserção de ingressos falhar
+      await supabase.from("eventos").delete().eq("id", eventoId)
       throw tiposError
     }
 
-    return NextResponse.json({ success: true, evento: eventoData[0] })
+    return NextResponse.json({ success: true, evento: eventoData })
   } catch (error) {
     console.error("Erro ao criar evento:", error)
     return NextResponse.json({ success: false, message: "Erro ao criar evento" }, { status: 500 })

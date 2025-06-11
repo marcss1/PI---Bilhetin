@@ -1,43 +1,50 @@
-"use client"
+// app/page.tsx
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { CalendarDays, MapPin, Clock, ArrowRight } from "lucide-react"
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { CalendarDays, MapPin, Clock, ArrowRight } from "lucide-react";
+// 1. IMPORTE O HOOK DE AUTENTICAÇÃO
+import { useAuth } from "@/components/auth-provider";
 
 interface Evento {
-  id: string
-  titulo: string
-  data: string
-  local: string
-  horario: string
-  categoria: string
-  imagem: string
+  id: string;
+  titulo: string;
+  data: string;
+  local: string;
+  horario: string;
+  categoria: string;
+  imagem: string;
 }
 
 export default function Home() {
-  const [eventos, setEventos] = useState<Evento[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [carregandoEventos, setCarregandoEventos] = useState(true);
+
+  // 2. PEGUE O ESTADO DO USUÁRIO E O CARREGAMENTO DA AUTENTICAÇÃO
+  const { usuario, carregando: carregandoAuth } = useAuth();
 
   useEffect(() => {
     async function carregarEventos() {
       try {
-        const res = await fetch("/api/eventos")
+        const res = await fetch("/api/eventos");
         if (res.ok) {
-          const data = await res.json()
-          setEventos(data.eventos || [])
+          const data = await res.json();
+          setEventos(data.eventos || []);
         }
       } catch (error) {
-        console.error("Erro ao carregar eventos:", error)
+        console.error("Erro ao carregar eventos:", error);
       } finally {
-        setCarregando(false)
+        setCarregandoEventos(false);
       }
     }
 
-    carregarEventos()
-  }, [])
+    carregarEventos();
+  }, []);
 
   const categorias = [
     { nome: "Música", icone: "🎵", slug: "musica" },
@@ -46,7 +53,7 @@ export default function Home() {
     { nome: "Cinema", icone: "🎬", slug: "cinema" },
     { nome: "Arte", icone: "🎨", slug: "arte" },
     { nome: "Gastronomia", icone: "🍽️", slug: "gastronomia" },
-  ]
+  ];
 
   return (
     <div>
@@ -55,7 +62,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-">
                 Encontre os <span className="text-primary">melhores eventos</span> em um só lugar
               </h1>
               <p className="text-lg mb-8">
@@ -67,14 +74,16 @@ export default function Home() {
                     Ver Eventos
                   </Button>
                 </Link>
-                <Link href="/cadastro">
-                  <Button
-                    variant="outline"
-                    className="border-primary text-primary hover:bg-primary hover:text-secondary w-full sm:w-auto"
-                  >
-                    Criar Conta
-                  </Button>
-                </Link>
+                {!carregandoAuth && !usuario && (
+                  <Link href="/cadastro">
+                    <Button
+                      variant="outline"
+                      className="border-primary text-primary hover:bg-primary hover:text-secondary w-full sm:w-auto"
+                    >
+                      Criar Conta
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
             <div className="hidden md:block">
@@ -83,8 +92,7 @@ export default function Home() {
                 alt="Eventos"
                 width={600}
                 height={500}
-                className="rounded-lg border-2 border-white shadow-lg ml-20"
-    
+                className="ml-20"
               />
             </div>
           </div>
@@ -120,7 +128,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {carregando ? (
+          {carregandoEventos ? (
             <div className="text-center py-12">
               <p>Carregando eventos...</p>
             </div>
@@ -217,5 +225,5 @@ export default function Home() {
         </div>
       </section>
     </div>
-  )
+  );
 }

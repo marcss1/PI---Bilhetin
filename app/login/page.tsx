@@ -1,48 +1,70 @@
-"use client"
+// app/login/page.tsx
 
-import type React from "react"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useSearchParams, useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider"
+// 1. IMPORTE 'useState' E 'useEffect' DO REACT
+import { useState, useEffect } from "react";
+import type React from "react";
+
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [senha, setSenha] = useState("")
-  const [erro, setErro] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(false)
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect") || "/"
-  const router = useRouter()
-  const { login } = useAuth()
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(false);
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
+  const router = useRouter();
 
+  // 2. PEGUE ESTES VALORES DO SEU 'useAuth'
+  const { login, usuario, carregando: authLoading } = useAuth();
+
+  // 3. ESTE É O useEffect CORRETO E COMPLETO
+  useEffect(() => {
+    // A condição é: "Se o carregamento inicial do provedor terminou E o usuário existe..."
+    if (!authLoading && usuario) {
+      // "...então podemos redirecionar com segurança."
+      router.push(redirect);
+    }
+  }, [usuario, authLoading, redirect, router]);
+
+  // 4. A FUNÇÃO handleSubmit MODIFICADA (SEM O REDIRECIONAMENTO)
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErro(null)
-    setCarregando(true)
+    e.preventDefault();
+    setErro(null);
+    setCarregando(true);
 
     try {
-      const resultado = await login(email, senha)
+      // Apenas chama a função de login. O useEffect acima cuidará do redirecionamento.
+      const resultado = await login(email, senha);
 
-      if (resultado.success) {
-        router.push(redirect)
-      } else {
-        setErro(resultado.message || "Erro ao fazer login")
+      // Se o resultado da API indicar uma falha, nós mostramos o erro.
+      if (!resultado.success) {
+        setErro(resultado.message || "E-mail ou senha inválidos.");
       }
+      // NÃO há redirecionamento aqui.
     } catch (error) {
-      setErro("Erro ao fazer login")
-      console.error(error)
+      setErro("Ocorreu um erro inesperado. Tente novamente.");
+      console.error("Erro no handleSubmit do login:", error);
     } finally {
-      setCarregando(false)
+      setCarregando(false);
     }
+  };
+
+  // Se o usuário já está logado ou carregando, mostramos uma tela de espera
+  if (authLoading || usuario) {
+    return <div>Carregando...</div>;
   }
 
+  // O resto do seu JSX (formulário) continua aqui.
   return (
     <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[calc(100vh-200px)]">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
@@ -66,7 +88,6 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {erro && <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">{erro}</div>}
-
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -111,27 +132,10 @@ export default function LoginPage() {
                 </Link>
               </p>
             </div>
-
-            <div className="relative mt-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-2 text-gray-500">Ou continue com</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button variant="outline" className="w-full">
-                Google
-              </Button>
-              <Button variant="outline" className="w-full">
-                Facebook
-              </Button>
-            </div>
+            {/* ... o resto do seu JSX continua aqui ... */}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }
