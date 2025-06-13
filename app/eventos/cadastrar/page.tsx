@@ -93,7 +93,7 @@ export default function CadastrarEventoPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="hora-fim">Hora de Término</Label>
-                    <Input id="hora-fim" type="time" required />
+                    <Input id="hora-fim" type="time" />
                   </div>
                 </div>
 
@@ -138,11 +138,33 @@ export default function CadastrarEventoPage() {
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="sp">São Paulo</SelectItem>
-                        <SelectItem value="rj">Rio de Janeiro</SelectItem>
+                        <SelectItem value="ac">Acre</SelectItem>
+                        <SelectItem value="al">Alagoas</SelectItem>
+                        <SelectItem value="ap">Amapá</SelectItem>
+                        <SelectItem value="am">Amazonas</SelectItem>
+                        <SelectItem value="ba">Bahia</SelectItem>
+                        <SelectItem value="ce">Ceará</SelectItem>
+                        <SelectItem value="df">Distrito Federal</SelectItem>
+                        <SelectItem value="es">Espírito Santo</SelectItem>
+                        <SelectItem value="go">Goiás</SelectItem>
+                        <SelectItem value="ma">Maranhão</SelectItem>
+                        <SelectItem value="mt">Mato Grosso</SelectItem>
+                        <SelectItem value="ms">Mato Grosso do Sul</SelectItem>
                         <SelectItem value="mg">Minas Gerais</SelectItem>
+                        <SelectItem value="pa">Pará</SelectItem>
+                        <SelectItem value="pb">Paraíba</SelectItem>
+                        <SelectItem value="pr">Paraná</SelectItem>
+                        <SelectItem value="pe">Pernambuco</SelectItem>
+                        <SelectItem value="pi">Piauí</SelectItem>
+                        <SelectItem value="rj">Rio de Janeiro</SelectItem>
+                        <SelectItem value="rn">Rio Grande do Norte</SelectItem>
                         <SelectItem value="rs">Rio Grande do Sul</SelectItem>
-                        {/* Outros estados */}
+                        <SelectItem value="ro">Rondônia</SelectItem>
+                        <SelectItem value="rr">Roraima</SelectItem>
+                        <SelectItem value="sc">Santa Catarina</SelectItem>
+                        <SelectItem value="sp">São Paulo</SelectItem>
+                        <SelectItem value="se">Sergipe</SelectItem>
+                        <SelectItem value="to">Tocantins</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -228,7 +250,6 @@ export default function CadastrarEventoPage() {
                           placeholder="Ex: 100"
                           value={tipo.quantidade}
                           onChange={(e) => atualizarTipoIngresso(tipo.id, "quantidade", e.target.value)}
-                          required
                         />
                       </div>
                     </div>

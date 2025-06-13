@@ -86,56 +86,75 @@ export default function ComprarIngressoPage() {
   const totalIngressos = Object.values(quantidades).reduce((total, qtd) => total + qtd, 0)
   const total = calcularTotal()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Substitua sua função handleSubmit por esta:
 
-    if (!usuario) {
-      router.push(`/login?redirect=${encodeURIComponent(`/eventos/${params.id}/comprar`)}`)
-      return
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!usuario) {
+    router.push(`/login?redirect=${encodeURIComponent(`/eventos/${params.id}/comprar`)}`);
+    return;
+  }
+
+  if (totalIngressos === 0) {
+    setErro("Selecione pelo menos um ingresso");
+    return;
+  }
+
+  setEnviando(true);
+  setErro(null);
+
+  try {
+    // 1. Filtrar apenas os ingressos que o usuário realmente selecionou (quantidade > 0)
+    const ingressosSelecionados = evento?.tiposIngresso.filter(
+      (tipo) => quantidades[tipo.id] > 0
+    );
+
+    if (!ingressosSelecionados || ingressosSelecionados.length === 0) {
+      setErro("Nenhum ingresso selecionado.");
+      setEnviando(false);
+      return;
     }
 
-    if (totalIngressos === 0) {
-      setErro("Selecione pelo menos um ingresso")
-      return
-    }
+    // 2. Mapear cada ingresso selecionado para uma promessa de requisição (fetch)
+    const promessasDeAdicao = ingressosSelecionados.map((tipo) => {
+      // Monta o corpo da requisição no formato que a API espera
+      const bodyParaApi = {
+        tipo_ingresso_id: tipo.id,
+        quantidade: quantidades[tipo.id],
+      };
 
-    setEnviando(true)
-    setErro(null)
-
-    try {
-      // Adicionar tipos de ingresso selecionados
-      const tiposIngresso = evento?.tiposIngresso.map((tipo) => ({
-        id: tipo.id,
-        quantidade: quantidades[tipo.id] || 0,
-      }))
-
-      const formData = {
-        eventoId: params.id,
-        tiposIngresso,
-      }
-
-      const res = await fetch("/api/carrinho", {
+      return fetch("/api/carrinho", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
-      })
+        body: JSON.stringify(bodyParaApi),
+      });
+    });
 
-      const data = await res.json()
+    // 3. Executar todas as requisições em paralelo para mais eficiência
+    const resultados = await Promise.all(promessasDeAdicao);
 
-      if (data.success) {
-        router.push("/carrinho")
-      } else {
-        setErro(data.message || "Erro ao adicionar ao carrinho")
-      }
-    } catch (error) {
-      console.error("Erro ao adicionar ao carrinho:", error)
-      setErro("Erro ao adicionar ao carrinho")
-    } finally {
-      setEnviando(false)
+    // 4. Verificar se alguma das requisições falhou
+    const algumaFalhou = resultados.find((res) => !res.ok);
+
+    if (algumaFalhou) {
+      // Se uma falhou, pega a mensagem de erro dela e mostra para o usuário
+      const dataErro = await algumaFalhou.json();
+      throw new Error(dataErro.error || "Um ou mais ingressos não puderam ser adicionados.");
     }
+
+    // 5. Se todas as requisições deram certo, redireciona o usuário para o carrinho
+    router.push("/carrinho");
+
+  } catch (error) {
+    console.error("Erro ao adicionar ao carrinho:", error);
+    setErro(error instanceof Error ? error.message : "Erro desconhecido ao adicionar ao carrinho");
+  } finally {
+    setEnviando(false);
   }
+};
 
   if (carregando) {
     return (

@@ -1,41 +1,48 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+// /pages/api/auth/me.js (ou /app/api/auth/me/route.js em App Router)
 
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
 export async function GET() {
   try {
-    const token = cookies().get("auth_token")?.value
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!token) {
-      return NextResponse.json({ usuario: null }, { status: 401 })
+    // Se não houver sessão, o usuário não está logado.
+    if (!session) {
+      return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
     }
 
-    const decoded = verify(token, JWT_SECRET) as { id: string; email: string; tipo: string }
-
-    // Verificar se o usuário ainda existe no Supabase
+    // Com a sessão confirmada, buscamos os dados adicionais na sua tabela 'usuarios'
     const { data: userData, error: userError } = await supabase
       .from("usuarios")
-      .select("*")
-      .eq("id", decoded.id)
-      .single()
+      .select("nome, tipo") // Selecione apenas os campos que precisa
+      .eq("id", session.user.id)
+      .single(); // .single() é ótimo, pois garante um único resultado
 
-    if (userError || !userData) {
-      return NextResponse.json({ usuario: null }, { status: 401 })
+    // Se houver um erro na query do banco de dados
+    if (userError) {
+      console.error("Erro ao buscar dados do perfil no Supabase:", userError);
+      return NextResponse.json({ error: "Erro interno ao buscar dados do perfil." }, { status: 500 });
     }
 
-    return NextResponse.json({
-      usuario: {
-        id: decoded.id,
-        nome: userData.nome,
-        email: decoded.email,
-        tipo: userData.tipo,
-      },
-    })
+    // Monta o objeto final do usuário para o frontend
+    const usuarioCompleto = {
+      id: session.user.id,
+      email: session.user.email,
+      nome: userData.nome, // Dado da sua tabela 'usuarios'
+      tipo: userData.tipo, // Dado da sua tabela 'usuarios'
+    };
+
+    return NextResponse.json({ usuario: usuarioCompleto });
+
   } catch (error) {
-    console.error("Erro na rota /api/auth/me:", error)
-    return NextResponse.json({ usuario: null }, { status: 401 })
+    console.error("Erro inesperado na rota /api/auth/me:", error);
+    return NextResponse.json({ error: "Ocorreu um erro inesperado." }, { status: 500 });
   }
 }

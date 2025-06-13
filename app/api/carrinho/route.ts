@@ -1,191 +1,235 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
-import { formatarData } from "@/lib/utils"
+// /api/carrinho/route.ts
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
+// ============================================================================
+// DEFINIÇÃO DE TIPOS
+// Ajuda o TypeScript a entender a estrutura dos dados do Supabase
+// ============================================================================
+interface TipoIngresso {
+  id: number;
+  nome: string;
+  preco: number;
+  estoque: number;
+}
 
+interface ItemCarrinho {
+  id: number;
+  quantidade: number;
+  preco_unitario: number | null;
+  tipos_ingresso: TipoIngresso[] | null; // A versão correta com '[]'
+}
+
+// ============================================================================
+// DEFINIÇÃO DE TIPOS (COM A CORREÇÃO)
+// ============================================================================
+
+
+// ============================================================================
+// GET - Buscar itens do carrinho e calcular o total
+// ============================================================================
 export async function GET() {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+
   try {
-    const token = cookies().get("auth_token")?.value
-
-    if (!token) {
-      return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
-    }
-
-    const decoded = verify(token, JWT_SECRET) as { id: string }
-
-    // Buscar compra pendente no Supabase
-    const { data: compra, error: compraError } = await supabase
-      .from("compras")
-      .select("*")
-      .eq("usuario_id", decoded.id)
-      .eq("status", "pendente")
-      .single()
-
-    if (compraError || !compra) {
-      return NextResponse.json({ success: true, itens: [] })
-    }
-
-    // Buscar itens da compra
-    const { data: itens, error: itensError } = await supabase
-      .from("itens_compra")
+    const { data: carrinho, error } = await supabase
+      .from('itens_compra')
       .select(`
-        *,
-        tipoIngresso:tipos_ingresso(
-          *,
-          evento:eventos(*)
+        id,
+        quantidade,
+        preco_unitario,
+        tipos_ingresso:tipo_ingresso_id (
+          id,
+          nome,
+          preco,
+          estoque: quantidade 
         )
       `)
-      .eq("compra_id", compra.id)
+      .is('compra_id', null)
+      .eq('usuario_id', session.user.id);
 
-    if (itensError) {
-      throw itensError
+    if (error) {
+      console.error('Erro ao buscar carrinho:', error);
+      return NextResponse.json({ error: 'Erro ao buscar carrinho', details: error.message }, { status: 500 });
     }
 
-    const itensFormatados = itens.map((item) => ({
-      id: item.id,
-      evento: {
-        id: item.tipoIngresso.evento.id,
-        titulo: item.tipoIngresso.evento.titulo,
-        data: formatarData(new Date(item.tipoIngresso.evento.data)),
-        local: item.tipoIngresso.evento.local,
-        imagem: item.tipoIngresso.evento.imagem,
-      },
-      ingressos: [
-        {
-          tipo: item.tipoIngresso.nome,
-          quantidade: item.quantidade,
-          precoUnitario: item.preco_unitario,
-        },
-      ],
-    }))
+    if (!carrinho || carrinho.length === 0) {
+      return NextResponse.json({ 
+        carrinho: [],
+        total: 0
+      });
+    }
 
-    return NextResponse.json({ success: true, itens: itensFormatados })
+    const total = carrinho.reduce((acc: number, item: ItemCarrinho) => {
+      // <-- CORREÇÃO 2: Acessar o primeiro item do array
+      const preco = item.tipos_ingresso?.[0]?.preco || item.preco_unitario || 0;
+      return acc + (item.quantidade * preco);
+    }, 0);
+
+    return NextResponse.json({ 
+      carrinho,
+      total
+    });
+
   } catch (error) {
-    console.error("Erro ao buscar carrinho:", error)
-    return NextResponse.json({ success: false, message: "Erro ao buscar carrinho" }, { status: 500 })
+    console.error('Erro interno:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+  }
+}
+// ============================================================================
+// POST - Adicionar item ao carrinho
+// ============================================================================
+export async function POST(request: Request) {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { tipo_ingresso_id, quantidade = 1 } = body;
+
+    if (!tipo_ingresso_id) {
+      return NextResponse.json({ error: 'ID do tipo de ingresso é obrigatório' }, { status: 400 });
+    }
+
+    // Verificar se o tipo de ingresso existe
+    const { data: tipoIngresso, error: tipoError } = await supabase
+      .from('tipos_ingresso')
+      .select('id, nome, preco, quantidade')
+      .eq('id', tipo_ingresso_id)
+      .single();
+
+    if (tipoError || !tipoIngresso) {
+      return NextResponse.json({ error: 'Tipo de ingresso não encontrado' }, { status: 404 });
+    }
+
+    // Verificar se já existe no carrinho
+    const { data: itemExistente, error: existeError } = await supabase
+      .from('itens_compra')
+      .select('*')
+      .eq('usuario_id', session.user.id)
+      .eq('tipo_ingresso_id', tipo_ingresso_id)
+      .is('compra_id', null)
+      .single();
+
+    if (existeError && existeError.code !== 'PGRST116') { // Ignora erro "nenhuma linha encontrada"
+      console.error('Erro ao verificar item existente:', existeError);
+      return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+    }
+
+    let result;
+
+    if (itemExistente) {
+      // Atualizar quantidade se já existe
+      const { data, error } = await supabase
+        .from('itens_compra')
+        .update({ 
+          quantidade: itemExistente.quantidade + quantidade
+        })
+        .eq('id', itemExistente.id)
+        .select();
+
+      result = { data, error };
+    } else {
+      // Inserir novo item
+      const { data, error } = await supabase
+        .from('itens_compra')
+        .insert([
+          {
+            usuario_id: session.user.id,
+            tipo_ingresso_id,
+            quantidade,
+            preco_unitario: tipoIngresso.preco,
+            compra_id: null // null significa que está no carrinho
+          }
+        ])
+        .select();
+
+      result = { data, error };
+    }
+
+    if (result.error) {
+      console.error('Erro ao adicionar ao carrinho:', result.error);
+      return NextResponse.json({ error: 'Erro ao adicionar ao carrinho' }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Item adicionado ao carrinho',
+      data: result.data 
+    });
+
+  } catch (error) {
+    console.error('Erro interno:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+// ============================================================================
+// DELETE - Remover item do carrinho
+// ============================================================================
+export async function DELETE(request: Request) {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+
   try {
-    const token = cookies().get("auth_token")?.value
+    const { searchParams } = new URL(request.url);
+    const itemId = searchParams.get('id');
 
-    if (!token) {
-      return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
+    if (!itemId) {
+      return NextResponse.json({ error: 'ID do item é obrigatório' }, { status: 400 });
     }
 
-    const decoded = verify(token, JWT_SECRET) as { id: string }
-    const body = await request.json()
-    const { eventoId, tiposIngresso } = body
+    // Remover item do carrinho
+    const { data, error } = await supabase
+      .from('itens_compra')
+      .delete()
+      .eq('id', itemId)
+      .eq('usuario_id', session.user.id)
+      .is('compra_id', null)
+      .select();
 
-    // Verificar se há ingressos selecionados
-    const totalIngressos = tiposIngresso.reduce((total: number, tipo: any) => total + tipo.quantidade, 0)
-
-    if (totalIngressos === 0) {
-      return NextResponse.json({ success: false, message: "Selecione pelo menos um ingresso" }, { status: 400 })
+    if (error) {
+      console.error('Erro ao remover item:', error);
+      return NextResponse.json({ error: 'Erro ao remover item do carrinho' }, { status: 500 });
     }
 
-    // Buscar ou criar carrinho (compra pendente)
-    let compraId: string
-
-    const { data: compraExistente, error: compraError } = await supabase
-      .from("compras")
-      .select("id")
-      .eq("usuario_id", decoded.id)
-      .eq("status", "pendente")
-      .single()
-
-    if (compraError && compraError.code !== "PGRST116") {
-      // PGRST116 é o código para "não encontrado"
-      throw compraError
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Item não encontrado ou já removido' }, { status: 404 });
     }
 
-    if (compraExistente) {
-      compraId = compraExistente.id
-    } else {
-      // Criar nova compra
-      const { data: novaCompra, error: novaCompraError } = await supabase
-        .from("compras")
-        .insert([
-          {
-            usuario_id: decoded.id,
-            status: "pendente",
-            total: 0,
-          },
-        ])
-        .select()
+    return NextResponse.json({ 
+      success: true,
+      message: 'Item removido com sucesso' 
+    });
 
-      if (novaCompraError || !novaCompra || novaCompra.length === 0) {
-        throw novaCompraError || new Error("Erro ao criar compra")
-      }
-
-      compraId = novaCompra[0].id
-    }
-
-    // Adicionar itens ao carrinho
-    let total = 0
-
-    for (const tipo of tiposIngresso) {
-      if (tipo.quantidade > 0) {
-        // Buscar tipo de ingresso
-        const { data: tipoIngresso, error: tipoError } = await supabase
-          .from("tipos_ingresso")
-          .select("*")
-          .eq("id", tipo.id)
-          .single()
-
-        if (tipoError || !tipoIngresso) {
-          continue
-        }
-
-        // Verificar disponibilidade
-        if (tipo.quantidade > tipoIngresso.quantidade) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: `Apenas ${tipoIngresso.quantidade} ingressos do tipo ${tipoIngresso.nome} disponíveis`,
-            },
-            { status: 400 },
-          )
-        }
-
-        // Gerar código único para o ingresso
-        const codigo = `${eventoId.substring(0, 6)}-${Date.now().toString(36)}-${Math.random()
-          .toString(36)
-          .substring(2, 7)}`
-
-        // Adicionar ao carrinho
-        const { error: itemError } = await supabase.from("itens_compra").insert([
-          {
-            compra_id: compraId,
-            tipo_ingresso_id: tipo.id,
-            quantidade: tipo.quantidade,
-            preco_unitario: tipoIngresso.preco,
-            codigo,
-          },
-        ])
-
-        if (itemError) {
-          throw itemError
-        }
-
-        total += tipo.quantidade * tipoIngresso.preco
-      }
-    }
-
-    // Atualizar total da compra
-    const { error: updateError } = await supabase.from("compras").update({ total }).eq("id", compraId)
-
-    if (updateError) {
-      throw updateError
-    }
-
-    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Erro ao adicionar ao carrinho:", error)
-    return NextResponse.json({ success: false, message: "Erro ao adicionar ao carrinho" }, { status: 500 })
+    console.error('Erro interno:', error);
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
