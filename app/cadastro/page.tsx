@@ -1,24 +1,28 @@
+// ARQUIVO: app/cadastro/page.tsx
+
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useAuth } from "@/components/auth-provider"
+import { UserCircle } from "lucide-react"
 
 export default function CadastroPage() {
-  const searchParams = useSearchParams()
-  const tipoParam = searchParams.get("tipo")
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(false)
   const router = useRouter()
   const { register } = useAuth()
+
+  const [fotoPerfil, setFotoPerfil] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -27,12 +31,20 @@ export default function CadastroPage() {
     confirmarSenha: "",
     telefone: "",
     cpf: "",
-    tipo: tipoParam === "produtor" ? "produtor" : "cliente",
+    tipo: "cliente",
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setFotoPerfil(file)
+      setPreviewUrl(URL.createObjectURL(file))
+    }
   }
 
   const handleTipoChange = (value: string) => {
@@ -44,7 +56,6 @@ export default function CadastroPage() {
     setErro(null)
     setCarregando(true)
 
-    // Verificar se as senhas coincidem
     if (formData.senha !== formData.confirmarSenha) {
       setErro("As senhas não coincidem")
       setCarregando(false)
@@ -52,7 +63,7 @@ export default function CadastroPage() {
     }
 
     try {
-      const resultado = await register(formData)
+      const resultado = await register({ ...formData, fotoPerfil })
 
       if (resultado.success) {
         router.push("/")
@@ -79,68 +90,61 @@ export default function CadastroPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {erro && <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">{erro}</div>}
 
+              <div className="space-y-2 flex flex-col items-center">
+                <Label htmlFor="foto-perfil">Foto de Perfil (opcional)</Label>
+                <div className="relative">
+                  {previewUrl ? (
+                    <Image
+                      src={previewUrl}
+                      alt="Prévia da foto de perfil"
+                      width={96}
+                      height={96}
+                      className="h-24 w-24 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserCircle className="h-24 w-24 text-gray-300" />
+                  )}
+                </div>
+                <Input
+                  id="foto-perfil"
+                  type="file"
+                  className="hidden"
+                  onChange={handleFotoChange}
+                  accept="image/png, image/jpeg, image/webp"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('foto-perfil')?.click()}
+                  className="mt-2"
+                >
+                  Selecionar Imagem
+                </Button>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome Completo</Label>
-                <Input
-                  id="nome"
-                  name="nome"
-                  placeholder="Digite seu nome completo"
-                  value={formData.nome}
-                  onChange={handleChange}
-                  required
-                />
+                <Input id="nome" name="nome" value={formData.nome} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                />
+                <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="senha">Senha</Label>
-                <Input
-                  id="senha"
-                  name="senha"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.senha}
-                  onChange={handleChange}
-                  required
-                />
+                <Input id="senha" name="senha" type="password" value={formData.senha} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmarSenha">Confirmar Senha</Label>
-                <Input
-                  id="confirmarSenha"
-                  name="confirmarSenha"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmarSenha}
-                  onChange={handleChange}
-                  required
-                />
+                <Input id="confirmarSenha" name="confirmarSenha" type="password" value={formData.confirmarSenha} onChange={handleChange} required />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone (opcional)</Label>
-                <Input
-                  id="telefone"
-                  name="telefone"
-                  placeholder="(00) 00000-0000"
-                  value={formData.telefone}
-                  onChange={handleChange}
-                />
+                <Input id="telefone" name="telefone" value={formData.telefone} onChange={handleChange} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF (opcional)</Label>
-                <Input id="cpf" name="cpf" placeholder="000.000.000-00" value={formData.cpf} onChange={handleChange} />
+                <Input id="cpf" name="cpf" value={formData.cpf} onChange={handleChange} />
               </div>
 
               <div className="space-y-2">
@@ -148,24 +152,16 @@ export default function CadastroPage() {
                 <RadioGroup value={formData.tipo} onValueChange={handleTipoChange} className="flex flex-col space-y-1">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="cliente" id="cliente" />
-                    <Label htmlFor="cliente" className="font-normal">
-                      Cliente (comprar ingressos)
-                    </Label>
+                    <Label htmlFor="cliente" className="font-normal">Cliente (comprar ingressos)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="produtor" id="produtor" />
-                    <Label htmlFor="produtor" className="font-normal">
-                      Produtor de Eventos (vender ingressos)
-                    </Label>
+                    <Label htmlFor="produtor" className="font-normal">Produtor de Eventos (vender ingressos)</Label>
                   </div>
                 </RadioGroup>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-primary text-secondary hover:bg-primary/90"
-                disabled={carregando}
-              >
+              <Button type="submit" className="w-full" disabled={carregando}>
                 {carregando ? "Cadastrando..." : "Cadastrar"}
               </Button>
             </form>

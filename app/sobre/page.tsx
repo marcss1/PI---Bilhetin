@@ -20,7 +20,7 @@ export default function SobrePage() {
             </div>
             <div className="hidden md:block">
               <Image
-                src="/placeholder.svg?height=400&width=600"
+                src="/sobre_bilhetin.png?height=400&width=600"
                 alt="Sobre o Bilhetin"
                 width={600}
                 height={400}

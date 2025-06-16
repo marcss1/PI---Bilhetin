@@ -45,7 +45,7 @@ export default function PerfilPage() {
   const { usuario, carregando: carregandoAuth } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Estado para controle da aba ativa
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabParam || "perfil");
@@ -60,7 +60,7 @@ export default function PerfilPage() {
   const [ingressos, setIngressos] = useState<Ingresso[]>([]);
   const [carregandoIngressos, setCarregandoIngressos] = useState(false);
   const [erroIngressos, setErroIngressos] = useState<string | null>(null);
-  
+
   // --- Efeitos (useEffect) ---
 
   // Efeito para proteger a rota contra acesso não autenticado
@@ -78,7 +78,7 @@ export default function PerfilPage() {
       setNome(usuario.nome || "");
       setEmail(usuario.email || "");
       // Adicionei um campo 'telefone' ao seu hook 'useAuth' como exemplo
-      setTelefone(usuario.telefone || ""); 
+      setTelefone(usuario.telefone || "");
     }
   }, [usuario]);
 
@@ -93,13 +93,13 @@ export default function PerfilPage() {
         // Simulação de chamada à API para buscar os ingressos do usuário
         // Substitua pela sua chamada real, por exemplo: const response = await fetch(`/api/usuarios/${usuario.id}/ingressos`);
         await new Promise(resolve => setTimeout(resolve, 1500)); // Simula delay da rede
-        
+
         // Dados de exemplo
         const dadosMock: Ingresso[] = [
-           { id: '1', evento: { id: 'evt1', titulo: 'Show de Rock', data: '2025-08-15', local: 'Estádio Nacional', horario: '20:00', imagem: '/placeholder-image.jpg' }, tipo: 'Pista Premium', quantidade: 2, codigo: 'XYZ123', status: 'Válido' },
-           { id: '2', evento: { id: 'evt2', titulo: 'Festival de Jazz', data: '2025-09-20', local: 'Concha Acústica', horario: '18:00', imagem: '/placeholder-image.jpg' }, tipo: 'Camarote', quantidade: 1, codigo: 'ABC987', status: 'Utilizado' }
+          { id: '1', evento: { id: 'evt1', titulo: 'Show de Rock', data: '2025-08-15', local: 'Estádio Nacional', horario: '20:00', imagem: '/placeholder-image.jpg' }, tipo: 'Pista Premium', quantidade: 2, codigo: 'XYZ123', status: 'Válido' },
+          { id: '2', evento: { id: 'evt2', titulo: 'Festival de Jazz', data: '2025-09-20', local: 'Concha Acústica', horario: '18:00', imagem: '/placeholder-image.jpg' }, tipo: 'Camarote', quantidade: 1, codigo: 'ABC987', status: 'Utilizado' }
         ];
-        
+
         setIngressos(dadosMock);
       } catch (error) {
         console.error("Erro ao buscar ingressos:", error);
@@ -149,7 +149,7 @@ export default function PerfilPage() {
   if (!usuario) {
     return null;
   }
-  
+
   // 3. Se o usuário existe, renderiza a página completa.
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -158,9 +158,15 @@ export default function PerfilPage() {
         <aside className="w-full md:w-1/4">
           <Card>
             <CardHeader className="items-center text-center">
-              <Image src="/avatar-placeholder.png" alt="Foto do Usuário" width={80} height={80} className="rounded-full mb-4" />
+              <Image
+                src={usuario.avatar_url || "/avatar-placeholder.png"} // Usa a foto do usuário OU o placeholder
+                alt={`Foto de ${usuario.nome}`}
+                width={80}
+                height={80}
+                className="rounded-full mb-4 object-cover" // object-cover para evitar distorção
+              />
               <CardTitle>{usuario.nome}</CardTitle>
-              <CardDescription>{usuario.email}</CardDescription>
+              {/* ... */}
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
               <Button variant={activeTab === 'perfil' ? 'default' : 'ghost'} onClick={() => setActiveTab('perfil')} className="justify-start gap-2">
@@ -201,7 +207,7 @@ export default function PerfilPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="telefone">Telefone</Label>
-                      <Input id="telefone" type="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(99) 99999-9999"/>
+                      <Input id="telefone" type="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(99) 99999-9999" />
                     </div>
                     <Button type="submit" disabled={salvandoPerfil}>
                       {salvandoPerfil && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -232,9 +238,9 @@ export default function PerfilPage() {
                 </CardHeader>
                 <CardContent>
                   {carregandoIngressos ? (
-                     <div className="flex items-center justify-center p-8 text-muted-foreground">
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando ingressos...
-                     </div>
+                    <div className="flex items-center justify-center p-8 text-muted-foreground">
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Carregando ingressos...
+                    </div>
                   ) : erroIngressos ? (
                     <AlertMessage type="error" message={erroIngressos} />
                   ) : ingressos.length > 0 ? (
@@ -245,11 +251,11 @@ export default function PerfilPage() {
                           <div className="p-4 flex flex-col justify-between flex-grow">
                             <div>
                               <h3 className="text-lg font-bold">{ing.evento.titulo}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2"><CalendarDays size={14}/> {new Date(ing.evento.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
-                              <p className="text-sm text-muted-foreground flex items-center gap-2"><MapPin size={14}/> {ing.evento.local}</p>
+                              <p className="text-sm text-muted-foreground flex items-center gap-2"><CalendarDays size={14} /> {new Date(ing.evento.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+                              <p className="text-sm text-muted-foreground flex items-center gap-2"><MapPin size={14} /> {ing.evento.local}</p>
                             </div>
                             <div className="flex justify-end mt-4">
-                               <Button><Download size={16} className="mr-2" /> Baixar Ingresso</Button>
+                              <Button><Download size={16} className="mr-2" /> Baixar Ingresso</Button>
                             </div>
                           </div>
                         </Card>

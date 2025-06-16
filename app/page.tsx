@@ -194,7 +194,7 @@ export default function Home() {
             </div>
             <div className="hidden md:block">
               <Image
-                src="/placeholder.svg?height=400&width=600"
+                src="/seja_um_produtor.png"
                 alt="Produtor de Eventos"
                 width={600}
                 height={400}
