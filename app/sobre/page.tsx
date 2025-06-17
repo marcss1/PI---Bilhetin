@@ -105,22 +105,22 @@ export default function SobrePage() {
               {
                 nome: "Eduardo Oliveira",
                 cargo: "Idealizador do projeto, designer",
-                foto: "/placeholder.svg?height=300&width=300",
+                foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "Giovanna Martins",
                 cargo: "Desenvolvedora do projeto",
-                foto: "/placeholder.svg?height=300&width=300",
+                foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "João Augusto Bassul",
                 cargo: "Documentarista",
-                foto: "/placeholder.svg?height=300&width=300",
+                foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "Marcones Queiroz",
                 cargo: "Desenvolvedor do projeto",
-                foto: "/placeholder.svg?height=300&width=300",
+                foto: "/foto_equipe.png?height=300&width=300",
               },
             ].map((membro, index) => (
               <div key={index} className="text-center">
