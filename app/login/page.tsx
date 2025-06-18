@@ -75,7 +75,7 @@ export default function LoginPage() {
               Acesse sua conta para comprar ingressos, gerenciar seus eventos e muito mais.
             </p>
             <div className="relative h-[300px] w-full">
-              <Image src="/placeholder.svg?height=600&width=600" alt="Login" fill className="object-cover rounded-lg" />
+              <Image src="/foto_equipe.png?height=600&width=600" alt="Login" fill className="object-cover rounded-lg" />
             </div>
           </div>
         </div>

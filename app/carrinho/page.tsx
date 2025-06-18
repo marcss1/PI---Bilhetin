@@ -305,7 +305,7 @@ export default function CarrinhoPage() {
         <div className="text-center py-16">
           <div className="mb-6">
             <Image
-              src="/placeholder.svg?height=200&width=200"
+              src="/carrinho_vazio.png?height=200&width=200"
               alt="Carrinho vazio"
               width={200}
               height={200}
