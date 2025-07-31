@@ -1,5 +1,3 @@
-// ARQUIVO: app/api/eventos/route.ts
-
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
@@ -11,8 +9,6 @@ interface TipoIngresso {
   quantidade: number;
 }
 
-// --- Interfaces ---
-// Interface para descrever EXATAMENTE como os dados vêm do Supabase
 interface EventoFromSupabase {
   id: string;
   titulo: string;
@@ -28,14 +24,17 @@ interface EventoFromSupabase {
   }[];
 }
 
-// --- Função GET (Com Tipagem Corrigida) ---
+// --- Função GET Corrigida e Completa ---
 export async function GET(request: Request) {
-  console.log("API: Recebida requisição GET para /api/events");
+  const { searchParams } = new URL(request.url);
+  const categoria = searchParams.get('categoria');
+  const busca = searchParams.get('busca');
+
+  console.log(`API: Recebida requisição GET. Categoria: ${categoria}, Busca: ${busca}`);
   const supabase = createRouteHandlerClient({ cookies });
 
   try {
-    // A sua busca no Supabase continua a mesma
-    const { data: eventos, error } = await supabase
+    let query = supabase
       .from("eventos")
       .select(`
         id, titulo, data, cidade, local, hora_inicio, hora_fim, categoria, imagem,
@@ -43,13 +42,27 @@ export async function GET(request: Request) {
       `)
       .order("data", { ascending: true });
 
+    // 1. Aplicar filtro de CATEGORIA, se existir
+    if (categoria) {
+      query = query.eq('categoria', categoria);
+    }
+
+    // 2. Aplicar filtro de BUSCA POR TEXTO de forma flexível
+    if (busca) {
+      const termosDeBusca = busca.split(' ').filter(term => term.length > 0);
+      for (const termo of termosDeBusca) {
+        query = query.ilike('titulo', `%${termo}%`);
+      }
+    }
+
+    const { data: eventos, error } = await query;
+
     if (error) {
       console.error("Erro no Supabase (GET):", error);
       throw new Error(error.message);
     }
 
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Avisamos ao TypeScript que cada 'evento' terá a estrutura de 'EventoFromSupabase'
+    // --- PARTE FALTANTE RESTAURADA ---
     const eventosFormatados = (eventos as EventoFromSupabase[]).map(evento => {
       const precos = evento.tipos_ingresso?.map(t => t.preco) || [];
       const precoMinimo = precos.length > 0 ? Math.min(...precos) : 0;
@@ -61,7 +74,6 @@ export async function GET(request: Request) {
         timeZone: 'UTC',
       });
 
-      // A lógica para criar a string de horário agora não dará mais erro
       const horario = (evento.hora_inicio && evento.hora_fim)
         ? `${evento.hora_inicio.slice(0, 5)} - ${evento.hora_fim.slice(0, 5)}`
         : "Horário a definir";
@@ -79,21 +91,21 @@ export async function GET(request: Request) {
       };
     });
 
-    console.log("API: Eventos buscados e formatados com sucesso.");
+    console.log(`API: ${eventosFormatados.length} eventos buscados e formatados com sucesso.`);
     return NextResponse.json({ success: true, eventos: eventosFormatados });
+    // --- FIM DA PARTE FALTANTE ---
 
-  } catch (err: any) {
+  } catch (err: any) { // Bloco catch restaurado
     console.error("ERRO CRÍTICO NA FUNÇÃO GET:", err);
     return NextResponse.json(
       { success: false, message: `Erro no servidor: ${err.message}` },
       { status: 500 }
     );
   }
-}
+} // <--- CHAVE FINAL DA FUNÇÃO GET CORRETAMENTE POSICIONADA
 
 // --- Função POST (Com Mais Logs) ---
 // Responde a requisições para criar um novo evento
-
 export async function POST(request: Request) {
   console.log("API: Recebida requisição POST para /api/eventos")
   const supabase = createRouteHandlerClient({ cookies })
@@ -129,15 +141,9 @@ export async function POST(request: Request) {
     // 3. Fazer upload da imagem para o Supabase Storage (se existir)
     if (imagemFile) {
       console.log("API: Imagem encontrada, iniciando upload...")
-      console.log("API: Nome do arquivo:", imagemFile.name)
-      console.log("API: Tamanho do arquivo:", imagemFile.size)
-      
-      // GERANDO UUID MANUALMENTE PARA DEBUG
-      const uuid = crypto.randomUUID() // Alternativa nativa do Node.js
+      const uuid = crypto.randomUUID()
       const nomeArquivo = `${uuid}-${imagemFile.name}`
       
-      console.log("API: Nome do arquivo gerado:", nomeArquivo)
-
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('imagens-eventos')
         .upload(nomeArquivo, imagemFile)
@@ -147,7 +153,6 @@ export async function POST(request: Request) {
         throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`)
       }
 
-      // 4. Obter a URL pública da imagem
       const { data: publicUrlData } = supabase.storage
         .from('imagens-eventos')
         .getPublicUrl(uploadData.path)
@@ -157,7 +162,6 @@ export async function POST(request: Request) {
     }
 
     // 5. Inserir o evento principal
-    console.log("API: Inserindo evento no banco de dados...")
     const { data: eventoData, error: eventoError } = await supabase
       .from("eventos")
       .insert([{
@@ -181,8 +185,6 @@ export async function POST(request: Request) {
     if (eventoError) {
       throw new Error(`Erro ao criar o evento: ${eventoError.message}`)
     }
-    console.log("API: Evento inserido com sucesso, ID:", eventoData.id)
-
     const eventoId = eventoData.id
 
     // 6. Inserir os tipos de ingresso
@@ -190,14 +192,12 @@ export async function POST(request: Request) {
       ...tipo,
       evento_id: eventoId,
     }))
-    console.log("API: Inserindo tipos de ingresso:", tiposIngressoFormatados)
     const { error: tiposError } = await supabase.from("tipos_ingresso").insert(tiposIngressoFormatados)
 
     if (tiposError) {
       await supabase.from("eventos").delete().eq("id", eventoId)
       throw new Error(`Erro ao criar ingressos: ${tiposError.message}`)
     }
-    console.log("API: Ingressos inseridos com sucesso.")
 
     return NextResponse.json({ success: true, evento: eventoData })
 
