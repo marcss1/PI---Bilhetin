@@ -1,4 +1,4 @@
-// /pages/api/auth/me.js (ou /app/api/auth/me/route.js em App Router)
+// /app/api/auth/me/route.ts - CÓDIGO COM LOGS PARA DEPURAÇÃO
 
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -13,31 +13,49 @@ export async function GET() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    // Se não houver sessão, o usuário não está logado.
     if (!session) {
       return NextResponse.json({ error: "Usuário não autenticado." }, { status: 401 });
     }
 
-    // Com a sessão confirmada, buscamos os dados adicionais na sua tabela 'usuarios'
+    // Lembre-se de trocar 'avatar_path' pelo nome real da sua coluna se for diferente.
     const { data: userData, error: userError } = await supabase
       .from("usuarios")
-      .select("nome, tipo") // Selecione apenas os campos que precisa
+      .select("nome, tipo, avatar_path") // Verifique se 'avatar_path' é o nome correto da coluna
       .eq("id", session.user.id)
-      .single(); // .single() é ótimo, pois garante um único resultado
+      .single();
 
-    // Se houver um erro na query do banco de dados
+    // <-- LOG 1 AQUI
+    console.log("LOG 1 - DADOS BRUTOS DO BANCO:", userData);
+
     if (userError) {
       console.error("Erro ao buscar dados do perfil no Supabase:", userError);
       return NextResponse.json({ error: "Erro interno ao buscar dados do perfil." }, { status: 500 });
     }
 
-    // Monta o objeto final do usuário para o frontend
+    let publicAvatarUrl = null;
+
+    if (userData && userData.avatar_path) {
+      const { data } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(userData.avatar_path);
+
+      publicAvatarUrl = data.publicUrl;
+      
+      // <-- LOG 2 AQUI
+      console.log("LOG 2 - URL PÚBLICA GERADA:", publicAvatarUrl);
+    }
+
     const usuarioCompleto = {
       id: session.user.id,
       email: session.user.email,
-      nome: userData.nome, // Dado da sua tabela 'usuarios'
-      tipo: userData.tipo, // Dado da sua tabela 'usuarios'
+      nome: userData.nome,
+      tipo: userData.tipo,
+      avatar_url: publicAvatarUrl,
     };
+
+    // <-- LOG 3 AQUI
+    console.log("LOG 3 - OBJETO FINAL ENVIADO PARA O FRONTEND:", usuarioCompleto);
 
     return NextResponse.json({ usuario: usuarioCompleto });
 
