@@ -15,19 +15,21 @@ import { MetodosPagamento } from "@/components/metodos-pagamento"
 
 // Interface que define a estrutura de um item do carrinho
 interface ItemCarrinho {
-  id: string
-  evento: {
-    id: string
-    titulo: string
-    data: string
-    local: string
-    imagem: string
-  }
-  ingressos: {
-    tipo: string
-    quantidade: number
-    precoUnitario: number
-  }[]
+  id: string;
+  quantidade: number;
+  preco_unitario: number | null;
+  tipos_ingresso: {
+    id: string;
+    nome: string;
+    preco: number;
+    eventos: { // O objeto do evento agora está aqui dentro
+      id: string;
+      titulo: string;
+      data: string;
+      local: string;
+      imagem: string;
+    };
+  };
 }
 
 /**
@@ -54,7 +56,7 @@ export default function CarrinhoPage() {
         }
         const data = await res.json()
         // Atualiza o estado com os itens recebidos
-        setItens(data.itens || [])
+        setItens(data.carrinho || []);
       } catch (error) {
         console.error("Erro ao carregar carrinho:", error)
         setErro("Erro ao carregar carrinho")
@@ -127,29 +129,23 @@ export default function CarrinhoPage() {
    * @returns Valor total do item
    */
   const calcularSubtotal = (item: ItemCarrinho) => {
-    return item.ingressos.reduce((total, ingresso) => {
-      return total + ingresso.quantidade * ingresso.precoUnitario
-    }, 0)
-  }
+    const preco = item.tipos_ingresso.preco || item.preco_unitario || 0;
+    return item.quantidade * preco;
+  };
 
   /**
    * Calcula o total geral do carrinho
    * @returns Valor total de todos os itens
    */
   const calcularTotal = () => {
-    return itens.reduce((total, item) => {
-      return total + calcularSubtotal(item)
-    }, 0)
-  }
+    return itens.reduce((total, item) => total + calcularSubtotal(item), 0);
+  };
 
   /**
    * Calcula o total de ingressos no carrinho
    * @returns Quantidade total de ingressos
    */
-  const totalIngressos = itens.reduce((total, item) => {
-    return total + item.ingressos.reduce((sum, ingresso) => sum + ingresso.quantidade, 0)
-  }, 0)
-
+  const totalIngressos = itens.reduce((total, item) => total + item.quantidade, 0);
   // RENDERIZAÇÃO CONDICIONAL - CARREGAMENTO
   if (carregando) {
     return (
@@ -173,79 +169,79 @@ export default function CarrinhoPage() {
           {/* COLUNA DOS ITENS (2/3 da largura) */}
           <div className="lg:col-span-2">
             <div className="space-y-6">
-              {/* Mapeia e renderiza cada item do carrinho */}
-              {itens.map((item) => (
-                <Card key={item.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row">
-                      {/* Imagem do evento */}
-                      <div className="relative h-[150px] md:h-auto md:w-[200px]">
-                        <Image
-                          src={item.evento.imagem || "/placeholder.svg"}
-                          alt={item.evento.titulo}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
+            <div className="lg:col-span-2">
+  <div className="space-y-6">
+    {/* Mapeia e renderiza cada item do carrinho com os caminhos corretos */}
+    {itens.map((item) => (
+      <Card key={item.id} className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex flex-col md:flex-row">
+            {/* Imagem do evento */}
+            <div className="relative h-[150px] md:h-auto md:w-[200px]">
+              <Image
+                src={item.tipos_ingresso.eventos.imagem || "/placeholder.svg"}
+                alt={item.tipos_ingresso.eventos.titulo}
+                fill
+                className="object-cover"
+              />
+            </div>
 
-                      {/* Informações do item */}
-                      <div className="p-6 flex-1">
-                        <div className="flex justify-between">
-                          <div>
-                            {/* Título do evento (clicável) */}
-                            <h2 className="text-xl font-semibold mb-2">
-                              <Link href={`/eventos/${item.evento.id}`} className="hover:text-primary">
-                                {item.evento.titulo}
-                              </Link>
-                            </h2>
+            {/* Informações do item */}
+            <div className="p-6 flex-1">
+              <div className="flex justify-between">
+                <div>
+                  {/* Título do evento (clicável) */}
+                  <h2 className="text-xl font-semibold mb-2">
+                    <Link href={`/eventos/${item.tipos_ingresso.eventos.id}`} className="hover:text-primary">
+                      {item.tipos_ingresso.eventos.titulo}
+                    </Link>
+                  </h2>
 
-                            {/* Informações do evento */}
-                            <div className="space-y-1 text-sm text-gray-600 mb-4">
-                              <div className="flex items-center">
-                                <CalendarDays className="h-4 w-4 mr-2 text-primary" />
-                                {item.evento.data}
-                              </div>
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-2 text-primary" />
-                                {item.evento.local}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Botão para remover item */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-500 hover:text-red-500"
-                            onClick={() => removerItem(item.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Remover</span>
-                          </Button>
-                        </div>
-
-                        {/* Lista de ingressos do item */}
-                        <div className="space-y-2">
-                          {item.ingressos.map((ingresso, index) => (
-                            <div key={index} className="flex justify-between text-sm">
-                              <p>
-                                {ingresso.quantidade}x {ingresso.tipo}
-                              </p>
-                              <p>{formatarPreco(ingresso.quantidade * ingresso.precoUnitario)}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Subtotal do item */}
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between font-semibold">
-                          <p>Subtotal</p>
-                          <p>{formatarPreco(calcularSubtotal(item))}</p>
-                        </div>
-                      </div>
+                  {/* Informações do evento */}
+                  <div className="space-y-1 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center">
+                      <CalendarDays className="h-4 w-4 mr-2 text-primary" />
+                      {item.tipos_ingresso.eventos.data}
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-2 text-primary" />
+                      {item.tipos_ingresso.eventos.local}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botão para remover item */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-red-500"
+                  onClick={() => removerItem(item.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">Remover</span>
+                </Button>
+              </div>
+
+              {/* Detalhes do ingresso específico (NÃO PRECISA MAIS DE .map AQUI) */}
+              <div className="flex justify-between text-sm py-2 border-t border-gray-100 mt-2">
+                <p className="font-medium">
+                  {item.quantidade}x {item.tipos_ingresso.nome}
+                </p>
+                <p>{formatarPreco(item.quantidade * item.tipos_ingresso.preco)}</p>
+              </div>
+
+              {/* Subtotal do item */}
+              <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between font-semibold">
+                <p>Subtotal do Item</p>
+                <p>{formatarPreco(calcularSubtotal(item))}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+</div>
             </div>
           </div>
 

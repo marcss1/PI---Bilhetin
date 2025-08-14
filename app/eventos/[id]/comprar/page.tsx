@@ -12,7 +12,7 @@ import { useParams, useRouter } from "next/navigation"
 import { AlertMessage } from "@/components/alert-message"
 import { useAuth } from "@/components/auth-provider"
 
-interface TipoIngresso {
+interface tipos_ingresso {
   id: string
   nome: string
   preco: number
@@ -26,7 +26,7 @@ interface Evento {
   local: string
   horario: string
   imagem: string
-  tiposIngresso: TipoIngresso[]
+  tiposIngresso: tipos_ingresso[]
 }
 
 export default function ComprarIngressoPage() {
@@ -42,24 +42,32 @@ export default function ComprarIngressoPage() {
   useEffect(() => {
     async function carregarEvento() {
       try {
-        const res = await fetch(`/api/eventos/${params.id}`)
+        const res = await fetch(`/api/eventos/${params.id}`);
         if (!res.ok) {
-          throw new Error("Evento não encontrado")
+          throw new Error("Evento não encontrado");
         }
-        const data = await res.json()
-        setEvento(data.evento)
-
-        // Inicializar quantidades
-        const qtds: Record<string, number> = {}
-        data.evento.tiposIngresso.forEach((tipo: TipoIngresso) => {
-          qtds[tipo.id] = 0
-        })
-        setQuantidades(qtds)
+        const data = await res.json();
+      
+        // >>>>> AQUI ESTÁ NOSSA LINHA DE INVESTIGAÇÃO <<<<<
+        console.log("DADOS REAIS VINDOS DA API:", data.evento); 
+      
+        setEvento(data.evento);
+      
+        // A linha abaixo provavelmente vai quebrar, então vamos descobrir o nome certo primeiro.
+        // Depois de vermos o console.log, vamos corrigir aqui.
+        const ingressosDoEvento = data.evento.tiposIngresso; // <--- O NOME ERRADO ESTÁ AQUI
+      
+        const qtds: Record<string, number> = {};
+        ingressosDoEvento.forEach((tipo: tipos_ingresso) => {
+          qtds[tipo.id] = 0;
+        });
+        setQuantidades(qtds);
+      
       } catch (error) {
-        console.error("Erro ao carregar evento:", error)
-        setErro("Evento não encontrado")
+        console.error("Erro ao carregar evento:", error);
+        setErro("Não foi possível carregar os detalhes do evento.");
       } finally {
-        setCarregando(false)
+        setCarregando(false);
       }
     }
 
