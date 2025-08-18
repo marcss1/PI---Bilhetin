@@ -26,7 +26,7 @@ export default function Home() {
   const [carregandoEventos, setCarregandoEventos] = useState(true);
 
   // 2. PEGUE O ESTADO DO USUÁRIO E O CARREGAMENTO DA AUTENTICAÇÃO
-  const { usuario, carregando: carregandoAuth } = useAuth();
+  const { userProfile: usuario, loading: carregandoAuth } = useAuth()
 
   useEffect(() => {
     async function carregarEventos() {
@@ -194,7 +194,7 @@ export default function Home() {
             </div>
             <div className="hidden md:block">
               <Image
-                src="/seja_um_produtor.png"
+                src="/seja_produtor.jpg"
                 alt="Produtor de Eventos"
                 width={600}
                 height={400}

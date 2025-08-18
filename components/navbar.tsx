@@ -3,13 +3,16 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, User, Menu, X, LogOut, Plus } from "lucide-react"
-import { useAuth } from "./auth-provider"
-
+import { ShoppingCart, User, Menu, X, LogOut, Plus, Settings } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { usuario, logout } = useAuth()
+  const { userProfile: usuario, signOut: logout } = useAuth()
+
+  console.log("[v0] Usuario object:", usuario)
+  console.log("[v0] Usuario tipo:", usuario?.tipo)
+  console.log("[v0] Is produtor?", usuario?.tipo === "produtor")
 
   return (
     <header className="bg-secondary text-secondary-foreground">
@@ -18,7 +21,9 @@ export function Navbar() {
           {/*<Link href="/" className="text-2xl font-bold text-primary"> // Caso a gente queira só o nome, sem a logo em imagem
             Bilhetin
           </Link>*/}
-          <Link href="/"><img src="/logo_nome.png" alt="Logo da marca" className="h-8 w-auto" /></Link>
+          <Link href="/">
+            <img src="/logo_nome.png" alt="Logo da marca" className="h-8 w-auto" />
+          </Link>
 
           {/* Menu para desktop */}
           <nav className="hidden md:flex items-center space-x-6">
@@ -51,16 +56,28 @@ export function Navbar() {
             {usuario ? (
               <div className="flex items-center space-x-4">
                 {usuario.tipo === "produtor" && (
-                  <Link href="/eventos/cadastrar">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
-                    >
-                      <Plus className="h-5 w-5" />
-                      <span className="sr-only">Cadastrar Evento</span>
-                    </Button>
-                  </Link>
+                  <>
+                    <Link href="/eventos/cadastrar">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
+                      >
+                        <Plus className="h-5 w-5" />
+                        <span className="sr-only">Cadastrar Evento</span>
+                      </Button>
+                    </Link>
+                    <Link href="/gerenciar-eventos">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-primary hover:text-primary hover:bg-secondary-foreground/10"
+                      >
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Gerenciar Eventos</span>
+                      </Button>
+                    </Link>
+                  </>
                 )}
                 <Link href="/perfil">
                   <Button
@@ -87,7 +104,7 @@ export function Navbar() {
                 <Link href="/login">
                   <Button
                     variant="outline"
-                    className="border-primary text-primary hover:bg-primary hover:text-secondary"
+                    className="border-primary text-primary hover:bg-primary hover:text-secondary bg-transparent"
                   >
                     Entrar
                   </Button>
@@ -148,12 +165,20 @@ export function Navbar() {
                 {usuario && (
                   <>
                     {usuario.tipo === "produtor" && (
-                      <Link href="/eventos/cadastrar" onClick={() => setIsMenuOpen(false)}>
-                        <Button variant="ghost" size="icon" className="text-primary">
-                          <Plus className="h-5 w-5" />
-                          <span className="sr-only">Cadastrar Evento</span>
-                        </Button>
-                      </Link>
+                      <>
+                        <Link href="/eventos/cadastrar" onClick={() => setIsMenuOpen(false)}>
+                          <Button variant="ghost" size="icon" className="text-primary">
+                            <Plus className="h-5 w-5" />
+                            <span className="sr-only">Cadastrar Evento</span>
+                          </Button>
+                        </Link>
+                        <Link href="/gerenciar-eventos" onClick={() => setIsMenuOpen(false)}>
+                          <Button variant="ghost" size="icon" className="text-primary">
+                            <Settings className="h-5 w-5" />
+                            <span className="sr-only">Gerenciar Eventos</span>
+                          </Button>
+                        </Link>
+                      </>
                     )}
                     <Link href="/perfil" onClick={() => setIsMenuOpen(false)}>
                       <Button variant="ghost" size="icon" className="text-primary">
@@ -178,7 +203,7 @@ export function Navbar() {
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="outline" className="w-full border-primary text-primary">
+                      <Button variant="outline" className="w-full border-primary text-primary bg-transparent">
                         Entrar
                       </Button>
                     </Link>
