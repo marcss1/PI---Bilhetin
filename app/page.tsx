@@ -26,7 +26,7 @@ export default function Home() {
   const [carregandoEventos, setCarregandoEventos] = useState(true);
 
   // 2. PEGUE O ESTADO DO USUÁRIO E O CARREGAMENTO DA AUTENTICAÇÃO
-  const { userProfile: usuario, loading: carregandoAuth } = useAuth()
+  const { usuario: usuario, carregando: carregandoAuth } = useAuth()
 
   useEffect(() => {
     async function carregarEventos() {
@@ -62,10 +62,10 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-">
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white">
                 Encontre os <span className="text-primary">melhores eventos</span> em um só lugar
               </h1>
-              <p className="text-lg mb-8">
+              <p className="text-lg mb-8 text-white">
                 Compre ingressos para shows, festivais, teatro, esportes e muito mais. Tudo de forma rápida e segura.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">

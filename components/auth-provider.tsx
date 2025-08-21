@@ -98,16 +98,20 @@ export function AuthProvider({
   }, []);
 
   const login = async (email: string, senha: string) => {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, senha }),
+    // Chama o Supabase diretamente no cliente
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: senha,
     });
-    const resultado = await res.json();
-    if (resultado.success) {
-      router.refresh();
+
+    if (error) {
+      // Retorna uma mensagem de erro compatível
+      return { success: false, message: error.message };
     }
-    return resultado;
+
+    // Sucesso! Não precisa de router.refresh() aqui.
+    // O listener onAuthStateChange vai cuidar da atualização da UI.
+    return { success: true };
   };
   
   const register = async (userData: any) => {

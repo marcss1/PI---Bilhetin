@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-provider"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { userProfile: usuario, signOut: logout } = useAuth()
+  const { usuario: usuario, logout: logout } = useAuth()
 
   console.log("[v0] Usuario object:", usuario)
   console.log("[v0] Usuario tipo:", usuario?.tipo)
