@@ -18,7 +18,7 @@ interface ItemCarrinho {
   id: number;
   quantidade: number;
   preco_unitario: number | null;
-  tipos_ingresso: TipoIngresso[] | null; // A versão correta com '[]'
+  ingressos: TipoIngresso[] | null; // <-- ALTERADO PARA "ingressos"
 }
 
 // ============================================================================
@@ -42,19 +42,26 @@ export async function GET() {
   }
 
   try {
+    // 1. Apenas buscamos os dados como antes
     const { data: carrinho, error } = await supabase
       .from('itens_compra')
       .select(`
         id,
         quantidade,
         preco_unitario,
-        tipos_ingresso:tipo_ingresso_id (
-          id,
-          nome,
-          preco,
-          estoque: quantidade 
+        tipos_ingresso: tipo_ingresso_id (
+            id,
+            nome,
+            preco,
+            eventos (
+                id,
+                titulo,
+                data,
+                local,
+                imagem
+            )
         )
-      `)
+    `)
       .is('compra_id', null)
       .eq('usuario_id', session.user.id);
 
@@ -63,22 +70,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Erro ao buscar carrinho', details: error.message }, { status: 500 });
     }
 
-    if (!carrinho || carrinho.length === 0) {
-      return NextResponse.json({ 
-        carrinho: [],
-        total: 0
-      });
-    }
-
-    const total = carrinho.reduce((acc: number, item: ItemCarrinho) => {
-      // <-- CORREÇÃO 2: Acessar o primeiro item do array
-      const preco = item.tipos_ingresso?.[0]?.preco || item.preco_unitario || 0;
-      return acc + (item.quantidade * preco);
-    }, 0);
-
+    // 2. Removemos todo o bloco de cálculo `carrinho.reduce(...)`
+    
+    // 3. Retornamos diretamente os dados do carrinho
     return NextResponse.json({ 
-      carrinho,
-      total
+      carrinho: carrinho || [], // Enviamos o carrinho (ou um array vazio se for nulo)
     });
 
   } catch (error) {

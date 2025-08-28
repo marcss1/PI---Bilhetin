@@ -48,7 +48,7 @@
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
-    "jsonwebtoken": "latest",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.454.0",
     "mercadopago": "latest",
     "next": "^14.2.29",
@@ -68,6 +68,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
