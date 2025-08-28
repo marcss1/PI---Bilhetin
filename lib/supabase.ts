@@ -1,20 +1,23 @@
-import { createClient } from "@supabase/supabase-js"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
-// Criação de clientes Supabase separados para uso no servidor e no cliente
-// O cliente do servidor tem permissões completas usando a chave de serviço
+/**
+ * Esta função é para uso em SERVER COMPONENTS e SERVER ACTIONS.
+ * Ela cria um cliente Supabase que lê a sessão do usuário a partir dos cookies.
+ * É a forma segura e recomendada de interagir com o Supabase no servidor.
+ */
 export const createServerSupabaseClient = () => {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", process.env.SUPABASE_SERVICE_ROLE_KEY || "", {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
+  const cookieStore = cookies();
+  // Esta função oficial do Supabase cuida de toda a complexidade de ler os cookies.
+  return createServerComponentClient({ cookies: () => cookieStore });
+};
 
-// Cliente para uso no navegador (lado do cliente)
-// Usa a chave anônima que tem permissões limitadas definidas pelas políticas RLS
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+/**
+ * Este cliente é para uso exclusivo no NAVEGADOR (componentes "use client").
+ * Ele usa a chave anônima pública e respeita as Políticas de Segurança (RLS).
+ */
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-// Singleton pattern para evitar múltiplas instâncias no cliente
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);

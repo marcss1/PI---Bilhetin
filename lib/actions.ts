@@ -462,62 +462,50 @@ export async function adicionarAoCarrinho(formData: FormData) {
 }
 
 export async function removerDoCarrinho(itemId: string) {
-  const usuario = await getUsuarioLogado()
-
-  if (!usuario) {
-    redirect("/login")
-  }
-
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createServerSupabaseClient();
 
-    // Verificar se o item pertence ao usuário
+    // 1. Obter o usuário da forma SEGURA e RECOMENDADA pelo Supabase
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // Se houver um erro de autenticação ou se não houver usuário, a operação para.
+    if (authError || !user) {
+      console.error("Erro de autenticação ao remover item:", authError);
+      return { success: false, message: "Sessão inválida. Por favor, faça login novamente." };
+    }
+
+    // 2. Buscar o item para garantir que ele pertence ao usuário autenticado
     const { data: item, error: itemError } = await supabase
       .from("itens_compra")
-      .select(`
-        *,
-        compra:compras(*)
-      `)
+      .select("id")
       .eq("id", itemId)
-      .single()
+      .eq("usuario_id", user.id) // Usando o user.id seguro obtido do Supabase
+      .is("compra_id", null)
+      .single();
 
-    if (itemError || !item || item.compra.usuario_id !== usuario.id) {
-      return { success: false, message: "Item não encontrado" }
+    if (itemError || !item) {
+      console.error("Tentativa de remoção de item falhou (item não encontrado ou sem permissão):", itemError);
+      return { success: false, message: "Item não encontrado ou você não tem permissão para removê-lo." };
     }
 
-    // Remover item
-    const { error: deleteError } = await supabase.from("itens_compra").delete().eq("id", itemId)
+    // 3. Se a verificação passou, o item existe e pertence ao usuário. Agora podemos deletar.
+    const { error: deleteError } = await supabase
+      .from("itens_compra")
+      .delete()
+      .eq("id", itemId);
 
     if (deleteError) {
-      throw deleteError
+      throw new Error(`Erro ao deletar o item: ${deleteError.message}`);
     }
 
-    // Recalcular total da compra
-    const { data: itensRestantes, error: itensError } = await supabase
-      .from("itens_compra")
-      .select(`
-        *,
-        tipoIngresso:tipos_ingresso(*)
-      `)
-      .eq("compra_id", item.compra_id)
+    // 4. Revalidar o cache e retornar sucesso.
+    revalidatePath("/carrinho");
+    return { success: true };
 
-    if (itensError) {
-      throw itensError
-    }
-
-    const novoTotal = itensRestantes.reduce((total, item) => total + item.quantidade * item.tipoIngresso.preco, 0)
-
-    const { error: updateError } = await supabase.from("compras").update({ total: novoTotal }).eq("id", item.compra_id)
-
-    if (updateError) {
-      throw updateError
-    }
-
-    revalidatePath("/carrinho")
-    return { success: true }
   } catch (error) {
-    console.error("Erro ao remover do carrinho:", error)
-    return { success: false, message: "Erro ao remover do carrinho" }
+    console.error("Erro crítico em removerDoCarrinho:", error);
+    const message = error instanceof Error ? error.message : "Erro desconhecido ao remover do carrinho";
+    return { success: false, message };
   }
 }
 
