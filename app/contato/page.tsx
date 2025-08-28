@@ -58,7 +58,7 @@ export default function ContatoPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">Entre em Contato</h1>
-            <p className="text-lg">
+            <p className="text-lg text-white">
               Estamos aqui para ajudar. Preencha o formulário abaixo ou use um de nossos canais de contato.
             </p>
           </div>
@@ -231,7 +231,7 @@ export default function ContatoPage() {
         </div>
       </section>
 
-      {/* Mapa */}
+      {/* Mapa 
       <section className="py-8">
         <div className="container mx-auto px-4">
           <div className="bg-gray-200 h-[400px] rounded-lg flex items-center justify-center">
@@ -241,7 +241,7 @@ export default function ContatoPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* FAQ */}
       <section className="py-16 bg-gray-50">

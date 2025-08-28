@@ -65,7 +65,7 @@ export default function Home() {
               <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white">
                 Encontre os <span className="text-primary">melhores eventos</span> em um só lugar
               </h1>
-              <p className="text-lg mb-8 text-white">
+              <p className="text-lg mb-8 text-primary">
                 Compre ingressos para shows, festivais, teatro, esportes e muito mais. Tudo de forma rápida e segura.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -78,7 +78,7 @@ export default function Home() {
                   <Link href="/cadastro">
                     <Button
                       variant="outline"
-                      className="border-primary text-primary hover:bg-primary hover:text-secondary w-full sm:w-auto"
+                      className="border-primary text-primary hover:bg-primary hover:text-secondary w-full sm:w-auto bg-transparent"
                     >
                       Criar Conta
                     </Button>
@@ -184,7 +184,7 @@ export default function Home() {
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Seja um <span className="text-primary">Produtor de Eventos</span>
               </h2>
-              <p className="mb-6">
+              <p className="mb-6 text-white">
                 Crie e gerencie seus próprios eventos na plataforma Bilhetin. Alcance milhares de pessoas e venda seus
                 ingressos de forma simples e segura.
               </p>

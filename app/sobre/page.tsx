@@ -13,7 +13,7 @@ export default function SobrePage() {
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
                 Sobre o <span className="text-primary">Bilhetin</span>
               </h1>
-              <p className="text-lg mb-6">
+              <p className="text-lg mb-6 text-white">
                 Conectando pessoas a experiências incríveis desde 2025. Somos a plataforma mais promissora em venda de ingressos
                 para eventos no Brasil.
               </p>
@@ -104,22 +104,22 @@ export default function SobrePage() {
             {[
               {
                 nome: "Eduardo Oliveira",
-                cargo: "Idealizador do projeto, designer",
+                cargo: "Designer e Marketing",
                 foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "Giovanna Martins",
-                cargo: "Desenvolvedora do projeto",
+                cargo: "Documentarista, Tester de Qualidade",
                 foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "João Augusto Bassul",
-                cargo: "Documentarista",
+                cargo: "Gestor, Engenheiro de IA",
                 foto: "/foto_equipe.png?height=300&width=300",
               },
               {
                 nome: "Marcones Queiroz",
-                cargo: "Desenvolvedor do projeto",
+                cargo: "Gerente de Projeto, Engenheiro de Dados",
                 foto: "/foto_equipe.png?height=300&width=300",
               },
             ].map((membro, index) => (
