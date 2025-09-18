@@ -330,7 +330,8 @@ export async function cadastrarEvento(formData: FormData) {
     }
 
     revalidatePath("/eventos")
-    redirect(`/eventos/${eventoId}`)
+    //redirect(`/eventos/${eventoId}`)
+    return { success: true, event: eventoResult[0] }
   } catch (error) {
     console.error("Erro ao cadastrar evento:", error)
     if (error instanceof z.ZodError) {

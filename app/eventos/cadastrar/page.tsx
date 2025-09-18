@@ -12,6 +12,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Upload, Plus, Minus, X } from "lucide-react"
 
+// <-- MODIFICADO AQUI: Importe a Server Action cadastrarEvento
+import { cadastrarEvento } from "@/lib/actions" 
+
 export default function CadastrarEventoPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -100,21 +103,21 @@ export default function CadastrarEventoPage() {
     }))))
 
     try {
-      const response = await fetch('/api/eventos', {
-        method: 'POST',
-        body: formData, // Envia o FormData (sem 'headers')
-      })
+      // <-- MODIFICADO AQUI: Chamada direta à Server Action 'cadastrarEvento'
+      const result = await cadastrarEvento(formData) 
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.message || "Ocorreu um erro no servidor.")
+      if (result.success) {
+        alert(result.message) // Exibe a mensagem de sucesso
+        router.push('/gerenciar-eventos') // <-- MODIFICADO AQUI: Redireciona para a página de gerenciamento
+        router.refresh() // <-- MODIFICADO AQUI: Força a revalidação da página de gerenciamento
+      } else {
+        // <-- MODIFICADO AQUI: Trata erros retornados pela Server Action
+        setError(result.message || "Ocorreu um erro ao cadastrar o evento.")
+        alert(`Erro: ${result.message || "Não foi possível cadastrar o evento."}`)
       }
 
-      alert("Evento publicado com sucesso!")
-      router.push('/perfil')
-
     } catch (err: any) {
+      // <-- MODIFICADO AQUI: Trata erros genéricos (ex: problema de rede)
       setError(err.message || "Não foi possível cadastrar o evento.")
       alert(`Erro: ${err.message || "Não foi possível cadastrar o evento."}`)
     } finally {
@@ -134,7 +137,7 @@ export default function CadastrarEventoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit}>
-            {/* ... Todo o seu JSX do formulário continua aqui ... */}
+            {/* ... Resto do seu JSX do formulário, que permanece inalterado ... */}
             {/* Card de Informações Básicas */}
             <Card className="mb-8">
               <CardHeader>

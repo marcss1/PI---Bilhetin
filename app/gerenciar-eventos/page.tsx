@@ -56,11 +56,12 @@ export default function GerenciarEventos() {
   }, [usuario])
 
   const carregarEventos = async () => {
+    
     try {
       const res = await fetch(`/api/eventos/produtor/${usuario?.id}`)
       if (res.ok) {
         const data = await res.json()
-        setEventos(data.eventos || [])
+        setEventos(data || []) // <-- NOVO: A API Route já retorna o array de eventos diretamente.
 
         // Load stats for each event
         const statsPromises = data.eventos.map(async (evento: Evento) => {
