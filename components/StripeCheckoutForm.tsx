@@ -31,7 +31,7 @@ export function StripeCheckoutForm({ onBack }: CheckoutFormProps) {
       elements,
       confirmParams: {
         // ATENÇÃO: Crie uma página de confirmação em /checkout/sucesso ou similar
-        return_url: `${window.location.origin}/checkout/sucesso`,
+        return_url: `${window.location.origin}/pagamento/sucesso`,
       },
     });
 
