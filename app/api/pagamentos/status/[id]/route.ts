@@ -1,52 +1,34 @@
-// Importações para verificar status de pagamento
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 
-// Chave secreta para verificar tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
-
-/**
- * API Route para verificar o status de um pagamento específico
- * Usada nas páginas de retorno para confirmar se o pagamento foi processado
- *
- * @param params.id - ID da compra para verificar
- */
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    // 1. VERIFICAÇÃO DE AUTENTICAÇÃO
-    // Obtém e verifica o token de autenticação
-    const token = cookies().get("auth_token")?.value
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    if (!token) {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
       return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
     }
 
-    // Decodifica o token para obter o ID do usuário
-    const decoded = verify(token, JWT_SECRET) as { id: string }
-
-    // 2. BUSCAR COMPRA NO BANCO DE DADOS
-    // Busca a compra pelo ID, garantindo que pertence ao usuário logado
     const { data: compra, error: compraError } = await supabase
       .from("compras")
       .select("*")
-      .eq("id", params.id) // ID da compra
-      .eq("usuario_id", decoded.id) // Só compras do usuário logado
+      .eq("id", params.id)
+      .eq("usuario_id", session.user.id)
       .single()
 
-    // Se compra não encontrada, retorna erro
     if (compraError || !compra) {
       return NextResponse.json({ success: false, message: "Compra não encontrada" }, { status: 404 })
     }
 
-    // 3. RETORNAR STATUS DA COMPRA
-    // Retorna informações sobre o status atual do pagamento
     return NextResponse.json({
       success: true,
-      status: compra.status, // Status da compra no nosso sistema
-      pagamentoStatus: compra.pagamento_status, // Status original do Mercado Pago
-      pagamentoMetodo: compra.pagamento_metodo, // Método de pagamento usado
+      status: compra.status,
+      pagamentoStatus: compra.pagamento_status,
+      pagamentoMetodo: compra.pagamento_metodo,
     })
   } catch (error) {
     console.error("Erro ao verificar status do pagamento:", error)

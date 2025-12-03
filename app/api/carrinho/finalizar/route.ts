@@ -1,25 +1,23 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
-
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 
 export async function POST() {
   try {
-    const token = cookies().get("auth_token")?.value
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    if (!token) {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
       return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
     }
-
-    const decoded = verify(token, JWT_SECRET) as { id: string }
 
     // Buscar carrinho
     const { data: compra, error: compraError } = await supabase
       .from("compras")
       .select("*")
-      .eq("usuario_id", decoded.id)
+      .eq("usuario_id", session.user.id)
       .eq("status", "pendente")
       .single()
 
@@ -36,9 +34,7 @@ export async function POST() {
       `)
       .eq("compra_id", compra.id)
 
-    if (itensError) {
-      throw itensError
-    }
+    if (itensError) throw itensError
 
     if (!itens || itens.length === 0) {
       return NextResponse.json({ success: false, message: "Carrinho vazio" }, { status: 400 })
@@ -53,9 +49,7 @@ export async function POST() {
         })
         .eq("id", item.tipo_ingresso_id)
 
-      if (updateError) {
-        throw updateError
-      }
+      if (updateError) throw updateError
     }
 
     // Confirmar compra
@@ -64,9 +58,7 @@ export async function POST() {
       .update({ status: "confirmado" })
       .eq("id", compra.id)
 
-    if (updateCompraError) {
-      throw updateCompraError
-    }
+    if (updateCompraError) throw updateCompraError
 
     return NextResponse.json({ success: true })
   } catch (error) {

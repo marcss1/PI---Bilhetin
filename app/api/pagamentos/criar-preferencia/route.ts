@@ -1,62 +1,36 @@
-// Importações necessárias para a API Route
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { criarPreferenciaPagamento } from "@/lib/mercadopago"
 import { formatarData } from "@/lib/utils"
 
-// Chave secreta para verificar tokens JWT
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
-
-/**
- * API Route para criar uma preferência de pagamento
- * Esta rota é chamada quando o usuário clica em "Ir para Pagamento" no carrinho
- */
 export async function POST(request: Request) {
   try {
-    // 1. VERIFICAÇÃO DE AUTENTICAÇÃO
-    // Obtém o token de autenticação dos cookies
-    const token = cookies().get("auth_token")?.value
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    // Se não há token, usuário não está logado
-    if (!token) {
+    // 1. Verificar autenticação
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
       return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
     }
 
-    // Decodifica o token para obter o ID do usuário
-    const decoded = verify(token, JWT_SECRET) as { id: string }
+    const userId = session.user.id
 
-    // 2. BUSCAR DADOS DO USUÁRIO
-    // Busca informações completas do usuário no banco de dados
+    // 2. Buscar dados do usuário (necessário para o Mercado Pago)
     const { data: userData, error: userError } = await supabase
       .from("usuarios")
       .select("*")
-      .eq("id", decoded.id)
+      .eq("id", userId)
       .single()
 
-    // Se usuário não encontrado, retorna erro
     if (userError || !userData) {
       return NextResponse.json({ success: false, message: "Usuário não encontrado" }, { status: 404 })
     }
 
-    // 3. BUSCAR CARRINHO (COMPRA PENDENTE)
-    // Procura por uma compra com status "pendente" do usuário
-    const { data: compra, error: compraError } = await supabase
-      .from("compras")
-      .select("*")
-      .eq("usuario_id", decoded.id)
-      .eq("status", "pendente")
-      .single()
-
-    // Se não há carrinho, retorna erro
-    if (compraError || !compra) {
-      return NextResponse.json({ success: false, message: "Carrinho vazio" }, { status: 400 })
-    }
-
-    // 4. BUSCAR ITENS DO CARRINHO
-    // Busca todos os itens da compra com informações dos eventos
-    const { data: itens, error: itensError } = await supabase
+    // 3. Buscar itens do carrinho (itens soltos, sem compra_id)
+    let { data: cartItems, error: itemsError } = await supabase
       .from("itens_compra")
       .select(`
         *,
@@ -65,72 +39,135 @@ export async function POST(request: Request) {
           evento:eventos(*)
         )
       `)
-      .eq("compra_id", compra.id)
+      .eq("usuario_id", userId)
+      .is("compra_id", null)
 
-    // Se não há itens ou erro, retorna erro
-    if (itensError || !itens || itens.length === 0) {
-      return NextResponse.json({ success: false, message: "Carrinho vazio" }, { status: 400 })
+    // Se não achou itens soltos, verifica se já existe uma compra pendente (caso o usuário tenha voltado da tela de pagamento)
+    let compraId = null;
+
+    if (!cartItems || cartItems.length === 0) {
+       const { data: pendingCompra } = await supabase
+          .from("compras")
+          .select("id")
+          .eq("usuario_id", userId)
+          .eq("status", "pendente")
+          .order('criado_em', { ascending: false }) // Pega a mais recente
+          .limit(1)
+          .maybeSingle()
+
+       if (pendingCompra) {
+          // Busca os itens dessa compra pendente
+          const { data: linkedItems } = await supabase
+             .from("itens_compra")
+             .select(`
+                *,
+                tipoIngresso:tipos_ingresso(
+                  *,
+                  evento:eventos(*)
+                )
+             `)
+             .eq("compra_id", pendingCompra.id)
+          
+          if (linkedItems && linkedItems.length > 0) {
+             cartItems = linkedItems
+             compraId = pendingCompra.id
+          } else {
+             return NextResponse.json({ success: false, message: "Carrinho vazio" }, { status: 400 })
+          }
+       } else {
+          return NextResponse.json({ success: false, message: "Carrinho vazio" }, { status: 400 })
+       }
     }
 
-    // 5. FORMATAR ITENS PARA O MERCADO PAGO
-    // Converte os itens do nosso formato para o formato esperado pelo Mercado Pago
-    const mpItems = itens.map((item) => ({
-      id: item.id, // ID único do item
-      title: `${item.tipoIngresso.nome} - ${item.tipoIngresso.evento.titulo}`, // Nome do produto
-      description: `${formatarData(new Date(item.tipoIngresso.evento.data))} - ${item.tipoIngresso.evento.local}`, // Descrição
-      quantity: item.quantidade, // Quantidade
-      unit_price: item.preco_unitario, // Preço unitário
-      currency_id: "BRL", // Moeda brasileira
-      category_id: "tickets", // Categoria de ingressos
+    // 4. Se ainda não temos um ID de compra (são itens novos do carrinho), vamos criar a compra
+    if (!compraId) {
+      // Calcular total
+      const total = cartItems!.reduce((acc, item) => {
+        return acc + (Number(item.preco_unitario) * item.quantidade)
+      }, 0)
+
+      // Criar registro na tabela de compras
+      const { data: novaCompra, error: createError } = await supabase
+        .from("compras")
+        .insert({
+          usuario_id: userId,
+          status: "pendente",
+          total: total
+        })
+        .select()
+        .single()
+      
+      if (createError) {
+        throw new Error(`Erro ao criar pedido: ${createError.message}`)
+      }
+
+      compraId = novaCompra.id
+
+      // Vincular os itens soltos a esta nova compra
+      const itemIds = cartItems!.map(i => i.id)
+      const { error: updateError } = await supabase
+        .from("itens_compra")
+        .update({ compra_id: compraId })
+        .in("id", itemIds)
+
+      if (updateError) {
+        throw new Error(`Erro ao vincular itens: ${updateError.message}`)
+      }
+    }
+
+    // 5. Formatar itens para o Mercado Pago
+    const mpItems = cartItems!.map((item) => ({
+      id: item.id,
+      title: `${item.tipoIngresso.nome} - ${item.tipoIngresso.evento.titulo}`,
+      description: `${formatarData(new Date(item.tipoIngresso.evento.data))} - ${item.tipoIngresso.evento.local}`,
+      quantity: item.quantidade,
+      unit_price: Number(item.preco_unitario),
+      currency_id: "BRL",
+      category_id: "tickets",
     }))
 
-    // 6. CRIAR PREFERÊNCIA DE PAGAMENTO
-    // Chama a função que cria a preferência no Mercado Pago
+    // 6. Criar preferência de pagamento
     const preference = await criarPreferenciaPagamento(
-      mpItems, // Itens formatados
+      mpItems,
       {
-        name: userData.nome, // Nome do comprador
-        email: userData.email, // Email do comprador
+        name: userData.nome,
+        email: userData.email,
         identification: userData.cpf
           ? {
-              type: "CPF", // Tipo de documento
-              number: userData.cpf, // Número do CPF
+              type: "CPF",
+              number: userData.cpf,
             }
-          : undefined, // Se não tem CPF, não envia identificação
+          : undefined,
       },
       {
-        // URLs para onde o usuário será redirecionado após o pagamento
         success: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pagamento/sucesso`,
         failure: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pagamento/falha`,
         pending: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pagamento/pendente`,
       },
-      compra.id, // ID da nossa compra como referência externa
+      compraId,
     )
 
-    // 7. ATUALIZAR COMPRA NO BANCO
-    // Salva o ID da preferência e muda o status para "aguardando_pagamento"
-    const { error: updateError } = await supabase
+    // 7. Atualizar compra com o ID da preferência
+    await supabase
       .from("compras")
       .update({
-        preferencia_id: preference.id, // ID da preferência do Mercado Pago
-        status: "aguardando_pagamento", // Novo status
+        preferencia_id: preference.id,
+        status: "aguardando_pagamento",
       })
-      .eq("id", compra.id)
+      .eq("id", compraId)
 
-    // Se erro ao atualizar, lança exceção
-    if (updateError) {
-      throw updateError
-    }
-
-    // 8. RETORNAR DADOS PARA O FRONTEND
-    // Retorna o ID da preferência e o link de checkout
     return NextResponse.json({
       success: true,
-      preferenceId: preference.id, // ID da preferência
-      initPoint: preference.init_point, // Link para o checkout do Mercado Pago
+      preferenceId: preference.id,
+      initPoint: preference.init_point,
     })
-  } catch (error) {
-    console.error("Erro ao criar preferência de pagamento:", error)
-    return NextResponse.json({ success: false, message: "Erro ao criar preferência de pagamento" }, { status: 500 })
+
+  } catch (error: any) {
+    console.error("Erro crítico ao criar preferência:", error)
+    return NextResponse.json({ 
+      success: false, 
+      message: "Erro ao processar pagamento", 
+      details: error.message 
+    }, { status: 500 })
   }
 }

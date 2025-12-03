@@ -1,37 +1,31 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import { verify } from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { formatarData } from "@/lib/utils"
-
-const JWT_SECRET = process.env.JWT_SECRET || "seu-segredo-super-secreto"
 
 export async function GET() {
   try {
-    const token = cookies().get("auth_token")?.value
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    if (!token) {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
       return NextResponse.json({ success: false, message: "Não autenticado" }, { status: 401 })
     }
 
-    const decoded = verify(token, JWT_SECRET) as { id: string }
-
-    // Buscar compras confirmadas
     const { data: compras, error: comprasError } = await supabase
       .from("compras")
-      .select("*")
-      .eq("usuario_id", decoded.id)
+      .select("id, status") // Seleciona apenas o necessário
+      .eq("usuario_id", session.user.id)
       .eq("status", "confirmado")
 
-    if (comprasError) {
-      throw comprasError
-    }
+    if (comprasError) throw comprasError
 
     if (!compras || compras.length === 0) {
       return NextResponse.json({ success: true, ingressos: [] })
     }
 
-    // Buscar itens das compras
     const compraIds = compras.map((compra) => compra.id)
 
     const { data: itens, error: itensError } = await supabase
@@ -46,9 +40,7 @@ export async function GET() {
       `)
       .in("compra_id", compraIds)
 
-    if (itensError) {
-      throw itensError
-    }
+    if (itensError) throw itensError
 
     const ingressos = itens.map((item) => ({
       id: item.id,
