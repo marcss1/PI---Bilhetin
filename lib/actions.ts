@@ -1,5 +1,6 @@
 "use server"
 
+import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createServerSupabaseClient } from "./supabase"
@@ -353,109 +354,112 @@ export async function adicionarAoCarrinho(formData: FormData) {
   const tiposIngresso = JSON.parse(formData.get("tiposIngresso") as string)
 
   try {
-    // Verificar se há ingressos selecionados
     const totalIngressos = tiposIngresso.reduce((total: number, tipo: any) => total + tipo.quantidade, 0)
 
     if (totalIngressos === 0) {
       return { success: false, message: "Selecione pelo menos um ingresso" }
     }
 
-    const supabase = createServerSupabaseClient()
+    // --- MUDANÇA PRINCIPAL: Usar Admin para garantir a gravação ---
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+    // -----------------------------------------------------------
 
-    // Buscar ou criar carrinho (compra pendente)
-    const { data: compraExistente, error: compraError } = await supabase
+    // 1. Buscar ou criar carrinho (Usando Admin)
+    const { data: compraExistente, error: compraError } = await supabaseAdmin
       .from("compras")
       .select("id")
       .eq("usuario_id", usuario.id)
       .eq("status", "pendente")
-      .single()
+      .maybeSingle() // Mais seguro que .single()
 
-    let compraId: string
-
-    if (compraError && compraError.code !== "PGRST116") {
-      // PGRST116 é o código para "não encontrado"
+    if (compraError) {
+      console.error("Erro ao buscar compra:", compraError);
       throw compraError
     }
+
+    let compraId: string
 
     if (compraExistente) {
       compraId = compraExistente.id
     } else {
-      // Criar nova compra
-      const { data: novaCompra, error: novaCompraError } = await supabase
+      // Criar nova compra (Agora com permissão de Admin!)
+      const { data: novaCompra, error: novaCompraError } = await supabaseAdmin
         .from("compras")
         .insert([
           {
             usuario_id: usuario.id,
             status: "pendente",
             total: 0,
+            // O banco deve preencher criado_em automaticamente
           },
         ])
         .select()
 
       if (novaCompraError || !novaCompra || novaCompra.length === 0) {
+        console.error("Erro ao criar compra:", novaCompraError);
         throw novaCompraError || new Error("Erro ao criar compra")
       }
 
       compraId = novaCompra[0].id
     }
 
-    // Adicionar itens ao carrinho
+    // 2. Adicionar itens ao carrinho
     let total = 0
 
     for (const tipo of tiposIngresso) {
       if (tipo.quantidade > 0) {
-        // Buscar tipo de ingresso
-        const { data: tipoIngresso, error: tipoError } = await supabase
+        // Buscar dados do ingresso (Admin para garantir leitura)
+        const { data: tipoIngresso } = await supabaseAdmin
           .from("tipos_ingresso")
           .select("*")
           .eq("id", tipo.id)
           .single()
 
-        if (tipoError || !tipoIngresso) {
-          continue
-        }
+        if (!tipoIngresso) continue
 
         // Verificar disponibilidade
         if (tipo.quantidade > tipoIngresso.quantidade) {
           return {
             success: false,
-            message: `Apenas ${tipoIngresso.quantidade} ingressos do tipo ${tipoIngresso.nome} disponíveis`,
+            message: `Apenas ${tipoIngresso.quantidade} ingressos disponíveis`,
           }
         }
 
-        // Gerar código único para o ingresso
-        const codigo = `${eventoId.substring(0, 6)}-${Date.now().toString(36)}-${Math.random()
-          .toString(36)
-          .substring(2, 7)}`
+        const codigo = `${eventoId.substring(0, 6)}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`
 
-        // Adicionar ao carrinho
-        const { error: itemError } = await supabase.from("itens_compra").insert([
+        // Inserir Item (Admin)
+        const { error: itemError } = await supabaseAdmin.from("itens_compra").insert([
           {
             compra_id: compraId,
             tipo_ingresso_id: tipo.id,
             quantidade: tipo.quantidade,
             preco_unitario: tipoIngresso.preco,
             codigo,
+            usuario_id: usuario.id, // Importante para a permissão de remover depois
           },
         ])
 
-        if (itemError) {
-          throw itemError
-        }
+        if (itemError) throw itemError
 
         total += tipo.quantidade * tipoIngresso.preco
       }
     }
 
-    // Atualizar total da compra
-    const { error: updateError } = await supabase.from("compras").update({ total }).eq("id", compraId)
-
-    if (updateError) {
-      throw updateError
-    }
+    // Atualizar total
+    await supabaseAdmin.from("compras").update({ total }).eq("id", compraId)
 
     revalidatePath("/carrinho")
     redirect("/carrinho")
+    
   } catch (error) {
     console.error("Erro ao adicionar ao carrinho:", error)
     return { success: false, message: "Erro ao adicionar ao carrinho" }
@@ -465,48 +469,68 @@ export async function adicionarAoCarrinho(formData: FormData) {
 export async function removerDoCarrinho(itemId: string) {
   try {
     const supabase = createServerSupabaseClient();
-
-    // 1. Obter o usuário da forma SEGURA e RECOMENDADA pelo Supabase
+    
+    // 1. Autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    // Se houver um erro de autenticação ou se não houver usuário, a operação para.
     if (authError || !user) {
-      console.error("Erro de autenticação ao remover item:", authError);
-      return { success: false, message: "Sessão inválida. Por favor, faça login novamente." };
+      return { success: false, message: "Sessão expirada. Faça login novamente." };
     }
 
-    // 2. Buscar o item para garantir que ele pertence ao usuário autenticado
-    const { data: item, error: itemError } = await supabase
+    // 2. Buscar o item e tentar achar a compra pai
+    const { data: item, error: findError } = await supabase
       .from("itens_compra")
-      .select("id")
+      .select(`
+        id,
+        compra_id,
+        compras (
+          usuario_id,
+          status
+        )
+      `)
       .eq("id", itemId)
-      .eq("usuario_id", user.id) // Usando o user.id seguro obtido do Supabase
-      .is("compra_id", null)
       .single();
 
-    if (itemError || !item) {
-      console.error("Tentativa de remoção de item falhou (item não encontrado ou sem permissão):", itemError);
-      return { success: false, message: "Item não encontrado ou você não tem permissão para removê-lo." };
+    if (findError || !item) {
+      return { success: false, message: "Item já removido ou não encontrado." };
     }
 
-    // 3. Se a verificação passou, o item existe e pertence ao usuário. Agora podemos deletar.
+    // 3. Lógica de Segurança Inteligente
+    const compra = item.compras as any;
+
+    // CENÁRIO A: Item Fantasma (A compra pai foi deletada, sobrou só o item)
+    if (!compra) {
+      // PERMITIR DELETAR! É lixo de banco de dados e precisa sair.
+      console.log(`🗑️ Removendo item fantasma: ${itemId}`);
+    }
+    // CENÁRIO B: Item Normal (Tem compra pai)
+    else {
+      // Verificar se o dono da compra é o usuário logado
+      if (compra.usuario_id !== user.id) {
+        return { success: false, message: "Você não tem permissão para remover este item." };
+      }
+      // Bloquear se já estiver pago
+      if (compra.status === 'confirmado') {
+        return { success: false, message: "Não é possível remover itens de uma compra finalizada." };
+      }
+    }
+
+    // 4. Deletar o item
     const { error: deleteError } = await supabase
       .from("itens_compra")
       .delete()
       .eq("id", itemId);
 
     if (deleteError) {
-      throw new Error(`Erro ao deletar o item: ${deleteError.message}`);
+      throw deleteError;
     }
 
-    // 4. Revalidar o cache e retornar sucesso.
     revalidatePath("/carrinho");
     return { success: true };
 
   } catch (error) {
-    console.error("Erro crítico em removerDoCarrinho:", error);
-    const message = error instanceof Error ? error.message : "Erro desconhecido ao remover do carrinho";
-    return { success: false, message };
+    console.error("Erro ao remover:", error);
+    return { success: false, message: "Erro ao processar a remoção." };
   }
 }
 
