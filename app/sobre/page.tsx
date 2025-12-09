@@ -48,7 +48,7 @@ export default function SobrePage() {
                 trabalhado incansavelmente para aprimorar nossa plataforma e oferecer a melhor experiência possível para você.
               </p>
               <p>
-                Hoje, o Bilhetin visa concetar milhares de pessoas a eventos de todos os tipos em todo o Brasil, desde
+                Hoje, o Bilhetin visa conectar milhares de pessoas a eventos de todos os tipos em todo o Brasil, desde
                 pequenos shows locais até grandes festivais nacionais. Estamos orgulhosos do caminho percorrido e
                 animados com as possibilidades que o futuro reserva.
               </p>
@@ -105,22 +105,22 @@ export default function SobrePage() {
               {
                 nome: "Eduardo Oliveira",
                 cargo: "Designer e Marketing",
-                foto: "/foto_equipe.png?height=300&width=300",
+                foto: "/eduardo_profile.jpeg?height=300&width=300",
               },
               {
                 nome: "Giovanna Martins",
                 cargo: "Documentarista, Tester de Qualidade",
-                foto: "/foto_equipe.png?height=300&width=300",
+                foto: "/giovanna_profile.jpeg?height=300&width=300",
               },
               {
                 nome: "João Augusto Bassul",
                 cargo: "Gestor, Engenheiro de IA",
-                foto: "/foto_equipe.png?height=300&width=300",
+                foto: "/bassul_profile.jpeg?height=300&width=300",
               },
               {
                 nome: "Marcones Queiroz",
                 cargo: "Gerente de Projeto, Engenheiro de Dados",
-                foto: "/foto_equipe.png?height=300&width=300",
+                foto: "/marcones_profile.png?height=300&width=300",
               },
             ].map((membro, index) => (
               <div key={index} className="text-center">

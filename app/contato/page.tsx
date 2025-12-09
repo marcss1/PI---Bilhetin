@@ -252,23 +252,25 @@ export default function ContatoPage() {
               {[
                 {
                   pergunta: "Como posso solicitar reembolso de um ingresso?",
-                  resposta:
-                    "Para solicitar reembolso, acesse sua conta, vá até 'Meus Ingressos', selecione o ingresso desejado e clique em 'Solicitar Reembolso'. O prazo para reembolso varia de acordo com a política de cada evento.",
+                  resposta: 
+                  "FUNCIONALIDADE AINDA NÃO DISPONÍVEL."
+                    // Para solicitar reembolso, acesse sua conta, vá até 'Meus Ingressos', selecione o ingresso desejado e clique em 'Solicitar Reembolso'. O prazo para reembolso varia de acordo com a política de cada evento.",
                 },
                 {
                   pergunta: "Posso transferir meu ingresso para outra pessoa?",
                   resposta:
-                    "Sim, você pode transferir seu ingresso para outra pessoa. Acesse 'Meus Ingressos', selecione o ingresso que deseja transferir e clique em 'Transferir'. Você precisará informar o e-mail da pessoa que receberá o ingresso.",
+                  "FUNCIONALIDADE AINDA NÃO DISPONÍVEL."
+                    // "Sim, você pode transferir seu ingresso para outra pessoa. Acesse 'Meus Ingressos', selecione o ingresso que deseja transferir e clique em 'Transferir'. Você precisará informar o e-mail da pessoa que receberá o ingresso.",
                 },
                 {
                   pergunta: "Como me torno um produtor de eventos na plataforma?",
                   resposta:
-                    "Para se tornar um produtor de eventos, você precisa criar uma conta como produtor e passar por um processo de verificação. Após a aprovação, você poderá cadastrar e gerenciar seus eventos na plataforma.",
+                    "Para se tornar um produtor de eventos, você precisa criar uma conta como produtor e passar por um processo de verificação. Após a aprovação, você poderá cadastrar e gerenciar seus eventos na plataforma. Para isso, entre em contato pelo nosso email.",
                 },
                 {
                   pergunta: "Qual é a taxa cobrada pela plataforma?",
                   resposta:
-                    "A Bilhetin cobra uma taxa de 10% sobre o valor de cada ingresso vendido. Esta taxa cobre os custos de processamento de pagamento, suporte ao cliente e manutenção da plataforma.",
+                    "A Bilhetin cobra uma taxa de 5% sobre o valor de cada ingresso vendido. Esta taxa cobre os custos de processamento de pagamento, suporte ao cliente e manutenção da plataforma.",
                 },
               ].map((item, index) => (
                 <div key={index} className="bg-white p-6 rounded-lg shadow-sm">

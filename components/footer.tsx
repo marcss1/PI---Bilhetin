@@ -68,18 +68,18 @@ export function Footer() {
               (61) 98319-5565
             </p>
             <div className="flex space-x-4">
-              <Link href="#" className="text-primary hover:text-primary/80">
+              {/* <Link href="#" className="text-primary hover:text-primary/80">
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
-              </Link>
-              <Link href="#" className="text-primary hover:text-primary/80">
+              </Link> */}
+              <Link href="https://www.instagram.com/bilhetineventos" target="_blank" className="text-primary hover:text-primary/80">
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
               </Link>
-              <Link href="#" className="text-primary hover:text-primary/80">
+              {/* <Link href="#" className="text-primary hover:text-primary/80">
                 <Twitter className="h-5 w-5" />
                 <span className="sr-only">Twitter</span>
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
